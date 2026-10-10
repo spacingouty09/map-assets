@@ -175,18 +175,58 @@ for (const p of parts.filter((p) => !p.parent)) {
   pushB(p, pi, { part: true });
 }
 
+// ---------- cited heights (scripts/height-sources.json, see docs/height-sources.md) ----------
+const HS = JSON.parse(readFileSync('scripts/height-sources.json', 'utf8'));
+const citedLog = [];
+const outlineCited = new Map();
+for (const src of HS.buildings) {
+  const storey = src.unit === 'floors' ? HS.storeyHeights[src.use || 'default'] : null;
+  const h = src.unit === 'm' ? src.value : src.value * storey;
+  const ref = { value: src.value, unit: src.unit, floors: src.floors ?? (src.unit === 'floors' ? src.value : null), storeyHeight: storey, publisher: src.publisher, url: src.url, fetched: HS.fetched, note: src.note, ctbuhEstimated: !!src.ctbuhEstimated };
+  const applied = [];
+  for (const b of buildings.filter((x) => x.name === src.osmName)) {
+    applied.push({ id: b.id, from: `${b.height} m (${b.heightSource})` });
+    Object.assign(b, { height: r1(h), heightSource: 'cited', heightRef: ref }); delete b.heightNote;
+  }
+  if (src.applyToUntaggedParts) {
+    const o = outlines.find((x) => x.tags.name === src.osmName);
+    if (o) {
+      outlineCited.set(o.id, { h: r1(h), ref });
+      for (const b of buildings.filter((x) => x.parent === o.id && x.heightSource === 'estimate')) {
+        applied.push({ id: b.id, from: `${b.height} m (estimate)` });
+        Object.assign(b, { height: r1(h), heightSource: 'cited', heightRef: { ...ref, note: `${ref.note} (untagged part of ${src.osmName})` } }); delete b.heightNote;
+      }
+    }
+  }
+  citedLog.push({ name: src.osmName, height: r1(h), applied });
+}
+
 // named outlines (kept even when rendered via parts) for labels/anchors
 const outlineIndex = outlines.filter((o) => o.tags.name && inBox(o.c)).map((o) => {
   const own = heightInfo(o.tags);
   const ph = o.parts.map((p) => buildings.find((b) => b.id === p.id)).filter(Boolean);
   const maxB = ph.length ? ph.reduce((m, b) => (b.height > m.height ? b : m)) : null;
-  return { id: o.id, name: o.tags.name, type: o.tags.building, c: [r1(o.c[0]), r1(o.c[1])], area: Math.round(o.area), renderedAsParts: !!(o.parts.length && o.partArea >= 0.5 * o.area), ownHeight: own ? r1(own.height) : null, ownHeightSource: own ? own.heightSource : 'none', levels: own?.levels ?? null, tallestPart: maxB ? { id: maxB.id, name: maxB.name, height: maxB.height, heightSource: maxB.heightSource, levels: maxB.levels } : null, ring: rnd(o.ring) };
+  const oc = outlineCited.get(o.id);
+  return { id: o.id, name: o.tags.name, type: o.tags.building, c: [r1(o.c[0]), r1(o.c[1])], area: Math.round(o.area), renderedAsParts: !!(o.parts.length && o.partArea >= 0.5 * o.area), ownHeight: oc ? oc.h : own ? r1(own.height) : null, ownHeightSource: oc ? 'cited' : own ? own.heightSource : 'none', heightRef: oc ? oc.ref : undefined, levels: own?.levels ?? null, tallestPart: maxB ? { id: maxB.id, name: maxB.name, height: maxB.height, heightSource: maxB.heightSource, levels: maxB.levels } : null, ring: rnd(o.ring) };
 });
+
+// ---------- building footprint index (for 'inside a building' checks) ----------
+const bIndex = [...outlines, ...parts].map((o) => { const xs = o.ring.map((p) => p[0]), ys = o.ring.map((p) => p[1]); return { ring: o.ring, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }; });
+const inBuildingPt = (pt) => bIndex.some((b) => pt[0] >= b.x0 && pt[0] <= b.x1 && pt[1] >= b.y0 && pt[1] <= b.y1 && inside(pt, b.ring));
+const shelterOf = (at, a, b) => {
+  const inB = inBuildingPt([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  const indoor = at.indoor || at.kind === 'corridor';
+  const sheltered = indoor || at.covered || inB;
+  const reason = indoor ? 'indoor' : at.covered ? 'covered-tag' : inB ? 'in-building' : 'open';
+  const share = at.bridge ? 'bridge' : indoor ? 'indoor' : at.covered || inB ? 'covered' : 'open';
+  return { sheltered, reason, share };
+};
 
 // ---------- lines ----------
 const ROAD_W = { motorway: 14, trunk: 14, primary: 12, secondary: 10, tertiary: 8, motorway_link: 7, trunk_link: 7, primary_link: 7, secondary_link: 6, tertiary_link: 6, residential: 6, unclassified: 6, service: 4 };
 const PED = new Set(['footway', 'pedestrian', 'steps', 'path', 'corridor']);
-const roads = [], rails = [], footways = [], waterLines = [], waterAreas = [], green = [];
+const roads = [], rails = [], footways = [], waterLines = [], green = [];
+const waterAreas = [];
 const railLine = (t) => (/kelana jaya/i.test(t.name || '') ? 'lrt' : /ktm/i.test(t.name || '') ? 'ktm' : /erl|klia/i.test(t.name || '') ? 'erl' : 'other');
 const yes = (v) => v != null && v !== 'no';
 for (const e of els) {
@@ -194,7 +234,15 @@ for (const e of els) {
   if (e.type === 'way' && e.geometry && t.highway) {
     const pts = e.geometry.map(proj);
     for (const seg of clipLine(pts)) {
-      if (PED.has(t.highway)) footways.push({ id: e.id, kind: t.highway, bridge: yes(t.bridge), covered: yes(t.covered), indoor: yes(t.indoor), layer: num(t.layer) || 0, pts: rnd(seg) });
+      if (PED.has(t.highway)) {
+        const at = { kind: t.highway, bridge: yes(t.bridge), covered: yes(t.covered), indoor: yes(t.indoor) };
+        let run = null;
+        for (let i = 1; i < seg.length; i++) {
+          const sh = shelterOf(at, seg[i - 1], seg[i]);
+          if (!run || run.sheltered !== sh.sheltered || run.shelter !== sh.reason) { run = { id: e.id, kind: t.highway, bridge: at.bridge, covered: at.covered, indoor: at.indoor, layer: num(t.layer) || 0, sheltered: sh.sheltered, shelter: sh.reason, pts: [seg[i - 1]] }; footways.push(run); }
+          run.pts.push(seg[i]);
+        }
+      }
       else if (ROAD_W[t.highway]) roads.push({ id: e.id, cls: t.highway, name: t.name || null, w: ROAD_W[t.highway], bridge: yes(t.bridge), tunnel: yes(t.tunnel), layer: num(t.layer) || 0, pts: rnd(seg) });
     }
   }
@@ -268,36 +316,45 @@ const anchors = {
   MEGAMALL: { label: 'Mid Valley Megamall', pt: byName('Mid Valley Megamall')?.c },
   KB01: { label: 'Mid Valley KTM (KB01)', pt: st('KB01')?.c },
 };
-const legs = [['KJ17', 'GARDENS'], ['GARDENS', 'MEGAMALL'], ['MEGAMALL', 'KB01']];
-const routes = [];
-for (const [from, to] of legs) {
+// KL Eco City towers: use the named tower whose footprint centre is closest to the pedestrian graph
+{
+  const cands = ['Mercu 2', 'Mercu 3', 'Mercu Aspire', 'Strata Office'].map((n) => ({ n, c: byName(n)?.c })).filter((x) => x.c).map((x) => ({ ...x, snap: nearest(x.c).d }));
+  const best = cands.sort((a, b) => a.snap - b.snap)[0];
+  if (best) anchors.ECO = { label: `KL Eco City (${best.n})`, pt: best.c };
+}
+function computeRoute(id, from, to) {
   const A = anchors[from], B = anchors[to];
-  if (!A.pt || !B.pt) { routes.push({ from, to, error: 'anchor missing' }); continue; }
+  if (!A?.pt || !B?.pt) return { id, from, to, error: 'anchor missing' };
   const sa = nearest(A.pt), sb = nearest(B.pt);
   const steps = dijkstra(sa.n, sb.n);
-  if (!steps) { routes.push({ from, to, fromLabel: A.label, toLabel: B.label, error: 'no connected path in OSM graph' }); continue; }
-  // merge consecutive edges with same attrs into segments
+  if (!steps) return { id, from, to, fromLabel: A.label, toLabel: B.label, error: 'no connected path in OSM graph' };
   const segs = [];
   for (const s of steps) {
     const at = s.e.attrs; const cls = at.kind === 'road' ? 'road' : at.bridge ? (at.indoor || at.covered ? 'bridge-enclosed' : 'bridge') : at.indoor || at.kind === 'corridor' ? 'indoor' : at.kind === 'steps' ? 'steps' : at.covered ? 'covered' : 'footway';
+    const sh = shelterOf(at, s.a.p, s.b.p);
     const last = segs.at(-1);
-    if (last && last.cls === cls && last.layer === at.layer) { last.pts.push(s.b.p); last.length += s.e.d; last.ways.add(at.way); }
-    else segs.push({ cls, layer: at.layer, road: at.road, pts: [s.a.p, s.b.p], length: s.e.d, ways: new Set([at.way]) });
+    if (last && last.cls === cls && last.layer === at.layer && last.sheltered === sh.sheltered && last.share === sh.share) { last.pts.push(s.b.p); last.length += s.e.d; last.ways.add(at.way); }
+    else segs.push({ cls, layer: at.layer, road: at.road, sheltered: sh.sheltered, shelter: sh.reason, share: sh.share, pts: [s.a.p, s.b.p], length: s.e.d, ways: new Set([at.way]) });
   }
   const total = segs.reduce((s, x) => s + x.length, 0);
-  const byCls = {}; for (const s of segs) byCls[s.cls] = r1((byCls[s.cls] || 0) + s.length);
-  const inPrecinct = (prec) => prec ? Math.round(segs.reduce((acc, sg) => { let t = 0; for (let i = 1; i < sg.pts.length; i++) { const m = [(sg.pts[i][0] + sg.pts[i - 1][0]) / 2, (sg.pts[i][1] + sg.pts[i - 1][1]) / 2]; if (inside(m, prec.ring)) t += Math.hypot(sg.pts[i][0] - sg.pts[i - 1][0], sg.pts[i][1] - sg.pts[i - 1][1]); } return acc + t; }, 0)) : 0;
-  const overWater = Math.round(segs.reduce((acc, sg) => { let t = 0; for (let i = 1; i < sg.pts.length; i++) { const m = [(sg.pts[i][0] + sg.pts[i - 1][0]) / 2, (sg.pts[i][1] + sg.pts[i - 1][1]) / 2]; if (waterAreas.some((w) => inside(m, w.ring))) t += Math.hypot(sg.pts[i][0] - sg.pts[i - 1][0], sg.pts[i][1] - sg.pts[i - 1][1]); } return acc + t; }, 0));
-  routes.push({
-    overWaterM: overWater,
-    withinEcoCityM: inPrecinct(ecoCity), withinMidValleyCityM: inPrecinct(midValley),
-    from, to, fromLabel: A.label, toLabel: B.label,
+  const sumBy = (k) => { const o = {}; for (const sg of segs) o[sg[k]] = r1((o[sg[k]] || 0) + sg.length); return o; };
+  const lenWhere = (pred) => Math.round(segs.reduce((acc, sg) => { let t = 0; for (let i = 1; i < sg.pts.length; i++) { const m = [(sg.pts[i][0] + sg.pts[i - 1][0]) / 2, (sg.pts[i][1] + sg.pts[i - 1][1]) / 2]; if (pred(m)) t += Math.hypot(sg.pts[i][0] - sg.pts[i - 1][0], sg.pts[i][1] - sg.pts[i - 1][1]); } return acc + t; }, 0));
+  const shelteredM = segs.filter((x) => x.sheltered).reduce((a, x) => a + x.length, 0);
+  return {
+    id, from, to, fromLabel: A.label, toLabel: B.label,
     snapFrom: r1(sa.d), snapTo: r1(sb.d),
-    length: Math.round(total), minutes: r1(total / WALK_SPEED), byClass: byCls,
+    length: Math.round(total), minutes: r1(total / WALK_SPEED),
+    byClass: sumBy('cls'), byShare: sumBy('share'),
+    shelteredM: Math.round(shelteredM), shelteredPct: total ? Math.round((shelteredM / total) * 100) : 0,
+    overWaterM: lenWhere((m) => waterAreas.some((w) => inside(m, w.ring))),
+    withinEcoCityM: ecoCity ? lenWhere((m) => inside(m, ecoCity.ring)) : 0,
+    withinMidValleyCityM: midValley ? lenWhere((m) => inside(m, midValley.ring)) : 0,
     straightLine: Math.round(Math.hypot(A.pt[0] - B.pt[0], A.pt[1] - B.pt[1])),
-    segments: segs.map((s) => ({ cls: s.cls, layer: s.layer, road: s.road, length: r1(s.length), osmWays: [...s.ways], pts: rnd(s.pts) })),
-  });
+    segments: segs.map((s) => ({ cls: s.cls, layer: s.layer, road: s.road, sheltered: s.sheltered, shelter: s.shelter, share: s.share, length: r1(s.length), osmWays: [...s.ways], pts: rnd(s.pts) })),
+  };
 }
+const routes = [['leg1', 'KJ17', 'GARDENS'], ['leg2', 'GARDENS', 'MEGAMALL'], ['leg3', 'MEGAMALL', 'KB01']].map(([id, a, b]) => computeRoute(id, a, b));
+const walks = [['w-kj17-megamall', 'KJ17', 'MEGAMALL'], ['w-kb01-gardens', 'KB01', 'GARDENS'], ['w-kj17-eco', 'KJ17', 'ECO'], ['w-megamall-gardens', 'MEGAMALL', 'GARDENS']].map(([id, a, b]) => computeRoute(id, a, b));
 
 // ---------- summary stats (all derived from the pulled OSM data) ----------
 const count = (f) => buildings.filter(f).length;
@@ -308,23 +365,27 @@ const meta = {
   levelHeightM: LEVEL_H, walkSpeedMPerMin: WALK_SPEED,
   counts: {
     rawElements: els.length, outlines: outlines.length, parts: parts.length, outlinesReplacedByParts: skippedOutlines,
-    buildings: buildings.length, heightOsm: count((b) => b.heightSource === 'osm'), heightLevels: count((b) => b.heightSource === 'levels'), heightEstimate: count((b) => b.heightSource === 'estimate'),
-    heightInherited: count((b) => !!b.heightNote), roads: roads.length, footways: footways.length,
-    footbridges: footways.filter((f) => f.bridge).length, indoorCorridors: footways.filter((f) => f.indoor || f.kind === 'corridor').length,
+    buildings: buildings.length, heightOsm: count((b) => b.heightSource === 'osm'), heightLevels: count((b) => b.heightSource === 'levels'), heightEstimate: count((b) => b.heightSource === 'estimate'), heightCited: count((b) => b.heightSource === 'cited'),
+    heightInherited: count((b) => !!b.heightNote), roads: roads.length, footways: new Set(footways.map((f) => f.id)).size,
+    footbridges: new Set(footways.filter((f) => f.bridge).map((f) => f.id)).size, indoorCorridors: new Set(footways.filter((f) => f.indoor || f.kind === 'corridor').map((f) => f.id)).size,
     stations: stations.length,
   },
   railLengthsM: { lrt: railLen('lrt'), ktm: railLen('ktm'), erl: railLen('erl') },
   footwayLengthM: Math.round(footways.reduce((s, f) => s + len(f.pts), 0)),
   footbridgeLengthM: Math.round(footways.filter((f) => f.bridge).reduce((s, f) => s + len(f.pts), 0)),
+  shelteredFootwayM: Math.round(footways.filter((f) => f.sheltered).reduce((s, f) => s + len(f.pts), 0)),
+  exposedFootwayM: Math.round(footways.filter((f) => !f.sheltered).reduce((s, f) => s + len(f.pts), 0)),
+  heightSourcesFetched: HS.fetched,
 };
 mkdirSync('src/data', { recursive: true });
 const w = (f, d) => writeFileSync(`src/data/${f}`, JSON.stringify(d));
 w('meta.json', meta);
 w('buildings.json', buildings);
-w('lines.json', { roads, rails, footways, waterLines });
+w('lines.json', { roads, rails, footways: footways.map((f) => ({ ...f, pts: rnd(f.pts) })), waterLines });
 w('areas.json', { waterAreas, green, precincts });
 w('stations.json', stations);
 w('named-outlines.json', outlineIndex);
-w('routes.json', { anchors, routes });
+w('routes.json', { anchors, routes, walks });
 console.log(JSON.stringify(meta, null, 1));
-for (const r of routes) console.log(r.from, '->', r.to, r.error || `${r.length} m, ${r.minutes} min, snap ${r.snapFrom}/${r.snapTo}`, JSON.stringify(r.byClass || {}));
+for (const r of [...routes, ...walks]) console.log(r.id, r.from, '->', r.to, r.error || `${r.length} m, ${r.minutes} min, snap ${r.snapFrom}/${r.snapTo}, sheltered ${r.shelteredPct}%`, JSON.stringify(r.byShare || {}));
+for (const c of citedLog) console.log('cited', c.name, c.height, 'm ->', c.applied.length ? c.applied.map((a) => a.id + ' was ' + a.from).join('; ') : 'NOT MATCHED');

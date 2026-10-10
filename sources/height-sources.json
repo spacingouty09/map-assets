@@ -1,0 +1,26 @@
+{
+  "fetched": "2026-10-10",
+  "storeyHeights": { "default": 3.5, "mall": 5.0 },
+  "notes": "Only values found on pages fetched on the date above. 'm' = stated height in metres; 'floors' = stated storey count, converted with storeyHeights (3.5 m default, 5.0 m for mall retail floors - an assumption of this study). CTBUH values flagged ctbuhEstimated are themselves CTBUH estimates from a floor count.",
+  "buildings": [
+    { "osmName": "Mercu 2", "value": 190.7, "unit": "m", "floors": 47, "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur (cites Emporis)", "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur", "note": "Also known as Setia Tower. OSM height tag was 191 m." },
+    { "osmName": "Residensi Vogue 1", "value": 243, "unit": "m", "floors": 63, "publisher": "CTBUH Skyscraper Center – KL Eco City complex (Vogue Suite One)", "url": "https://www.skyscrapercenter.com/complex/5523", "note": "Matched via Wikipedia KL Eco City master plan: 'Residensi Vogue 1 (Vogue Suites One)'. OSM has no height/levels." },
+    { "osmName": "MidValley Tower of Light", "value": 243, "unit": "m", "floors": 56, "publisher": "CTBUH Skyscraper Center – MidValley Tower of Light", "url": "https://www.skyscrapercenter.com/building/midvalley-tower-of-light/29211", "note": "CONFLICT: OSM building:levels=31 (≈108.5 m). CTBUH value applied by name match; verify on site." },
+    { "osmName": "Mercu Aspire", "value": 211, "unit": "m", "floors": 48, "ctbuhEstimated": true, "publisher": "CTBUH Skyscraper Center – Aspire Tower", "url": "https://www.skyscrapercenter.com/building/aspire-tower/41681", "note": "CTBUH estimate from 48 floors; SP Setia brochure states 42 storeys." },
+    { "osmName": "Menara TNB Bangsar", "value": 189, "unit": "m", "floors": 43, "ctbuhEstimated": true, "publisher": "CTBUH Skyscraper Center – TNB Gold Tower", "url": "https://www.skyscrapercenter.com/building/tnb-gold-tower/1472", "note": "CTBUH estimate from 43 floors. Outside the core cluster (south-west)." },
+    { "osmName": "Strata Office", "value": 154, "unit": "m", "floors": 35, "ctbuhEstimated": true, "publisher": "CTBUH Skyscraper Center – Strata Office Suites", "url": "https://www.skyscrapercenter.com/building/strata-office-suites/44727", "note": "CTBUH estimate from 35 floors." },
+    { "osmName": "ViiA Residences", "value": 184, "unit": "m", "floors": 47, "publisher": "Scraperbase – ViiA Residences & Amari Hotel", "url": "https://www.scraperbase.com/Malaysia/Kuala%20Lumpur/ViiA_Residences_and_Amari_Hotel", "note": "Crowd-sourced database; lower confidence than CTBUH." },
+    { "osmName": "The Gardens North Tower", "value": 32, "unit": "floors", "publisher": "StarProperty – The Gardens", "url": "http://www.starproperty.my/insight/509/the-gardens", "note": "'Office Tower: 32' storeys. Scraperbase lists 152 m (not used)." },
+    { "osmName": "The Gardens South Tower", "value": 32, "unit": "floors", "publisher": "StarProperty – The Gardens", "url": "http://www.starproperty.my/insight/509/the-gardens", "note": "'Office Tower: 32' storeys (each of the two towers)." },
+    { "osmName": "St. Giles The Gardens Residences", "value": 30, "unit": "floors", "publisher": "StarProperty – The Gardens", "url": "http://www.starproperty.my/insight/509/the-gardens", "note": "'The Gardens Residences: 30' storeys; matched by name (now operated as St. Giles). Same as OSM levels." },
+    { "osmName": "Menara IGB", "value": 18, "unit": "floors", "publisher": "IGB Property Management – Menara IGB", "url": "https://igbproperty.com/menara-igb", "note": "'an 18-storey office building together with a 2-storey annexe'. OSM had building:levels=25." },
+    { "osmName": "Mercu 3", "value": 32, "unit": "floors", "publisher": "CBD Properties – Mercu 3, KL Eco City", "url": "https://cbd.my/estate_property/mercu-3-kl-eco-city/", "note": "Agent listing: 'No. of Floors: 32'. Other listings say 31; Scraperbase 182 m/39 floors (not used)." },
+    { "osmName": "The Gardens Mall", "value": 5, "unit": "floors", "use": "mall", "applyToUntaggedParts": true, "publisher": "StarProperty – The Gardens", "url": "http://www.starproperty.my/insight/509/the-gardens", "note": "'Retail Gallery: 5' storeys × 5.0 m mall storey (assumption). Applied to the mall outline's parts that had no OSM height/levels." },
+    { "osmName": "Mid Valley Megamall", "value": 5, "unit": "floors", "use": "mall", "applyToUntaggedParts": true, "publisher": "Wikipedia – Mid Valley Megamall (infobox)", "url": "https://en.wikipedia.org/wiki/Mid_Valley_Megamall", "note": "'floors = 5 (excluding car park)' × 5.0 m mall storey (assumption). Applied to parts with no OSM height/levels." }
+  ],
+  "notApplied": [
+    { "name": "Southpoint (IGB)", "url": "https://igbproperty.com/southpoint", "reason": "IGB: '59-storey mixed commercial building'. OSM has separate 'South Point' and 'MidValley Tower of Light' footprints; unclear which footprint is the tower, so not applied to avoid double counting." },
+    { "name": "The Gardens Hotel", "url": "http://www.starproperty.my/insight/509/the-gardens", "reason": "27 storeys stated, but no OSM footprint is named for it." },
+    { "name": "Cititel, Boulevard, Northpoint, Centrepoint", "url": "https://igbproperty.com/", "reason": "No citable page fetched (IGB pages returned no building data)." }
+  ]
+}
