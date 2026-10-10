@@ -202,7 +202,7 @@ for (const src of HS.buildings) {
 }
 
 // named outlines (kept even when rendered via parts) for labels/anchors
-// ---------- overview zones (chapter 00) ----------
+// ---------- overview zones (chapter 01 Landmarks) ----------
 // Rule: (1) The Gardens = buildings named in GARDENS_NAMES, or parts of an outline with one of those names
 //           (the Gardens towers and St. Giles residences are mapped as parts of the "The Gardens Mall" outline);
 //       (2) KL Eco City = remaining buildings whose centroid lies in the OSM landuse polygon "KL Eco City";
@@ -230,7 +230,7 @@ for (const z of ['eco', 'gardens', 'midvalley']) {
   zoneStats[z] = { blocks: bs.length, footprintM2: cells.size, namedBuildings: named, tallest: tallest ? { name: tallest.name, height: tallest.height, heightSource: tallest.heightSource } : null, centroid: [r1(cx), r1(cy)] };
 }
 
-// ---------- landmark mosques (chapter 00) ----------
+// ---------- landmark mosques (chapter 01 Landmarks) ----------
 // Selected by OSM name (both are building=mosque; the Masjid Jamek way and the outer way of the
 // An Nur relation carry amenity=place_of_worship + religion=muslim). Masjid An Nur (alt_name
 // "Balai Islam An-Nur TNB Bangsar") is the mosque in the TNB Bangsar compound; its footprint centroid
