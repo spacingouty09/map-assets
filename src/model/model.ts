@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildings, lines, areas, routes, walks, meta, type XY, type Building, type HeightSource, type Route, type Zone } from './data';
+import { buildings, lines, areas, routes, walks, meta, landmarks, station, type XY, type Building, type HeightSource, type Route, type Zone, type Rail } from './data';
+import { chainWays, buildTrack, Trains, type Track } from './trains';
 import { sunVector } from './sun';
 
 export interface View { target: [number, number, number]; azimuth: number; polar: number; distance: number }
@@ -21,11 +22,12 @@ export interface SceneMode {
   buildingStyle: 'default' | 'source' | 'threshold' | 'zone';
   threshold: number;
   precincts: boolean;
+  landmarks: boolean; // highlight the landmark mosques (chapter 00)
 }
 export const DEFAULT_MODE: SceneMode = {
   rails: { lrt: 'context', ktm: 'context', erl: 'context' },
   footways: 'hidden', routeSet: 'none', routeFocus: null, walkFocus: null, routeStyle: 'plain', sun: null, shadeDots: false, muteWater: false, xray: false,
-  buildingStyle: 'default', threshold: 60, precincts: false,
+  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false,
 };
 
 const STAGE_W = 1920, STAGE_H = 1080;
@@ -88,13 +90,15 @@ export class World {
     zone: { eco: new THREE.MeshLambertMaterial(), gardens: new THREE.MeshLambertMaterial(), midvalley: new THREE.MeshLambertMaterial() } as Record<Zone, THREE.MeshLambertMaterial>,
     edgeKey: new THREE.LineBasicMaterial({ transparent: true }), edgeContext: new THREE.LineBasicMaterial({ transparent: true }),
     edgeFade: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.08 }),
-    rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
+    // polygon offset: the deck sits exactly on top of the KJ17 roof block (both 10.5 m); keep it on top without z-fighting
+    rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
     pier: new THREE.MeshLambertMaterial(),
     foot: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), footBridge: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }),
     route: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
     routeDim: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.3 }),
     precinct: new THREE.LineDashedMaterial({ dashSize: 8, gapSize: 6, transparent: true, opacity: 0.7 }),
     frame: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 }),
+    landmark: new THREE.MeshLambertMaterial(),
   };
   private railGroups: Record<'lrt' | 'ktm' | 'erl', THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group() };
   private footGroup = new THREE.Group();
@@ -111,6 +115,12 @@ export class World {
   private viewShift = 104; private viewShiftTarget = 104;
   private precinctGroup = new THREE.Group();
   private tween: { from: View; to: View; t0: number; dur: number } | null = null;
+  /** LRT tracks (one chain per direction) and the animated trainsets on them. */
+  lrtTracks: Track[] = [];
+  trains!: Trains;
+  private trainsOn = true;
+  private lastFrame = 0;
+  private landmarkGroup = new THREE.Group(); // landmark blocks outside the study square (shown with mode.landmarks)
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -118,6 +128,7 @@ export class World {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.localClippingEnabled = true; // trains are clipped at the study-area frame
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(28, STAGE_W / STAGE_H, 20, 9000);
@@ -178,15 +189,26 @@ export class World {
     }
 
     // rail
+    // LRT: the OSM track ways are chained into one continuous track per direction (smoothed deck height,
+    // no steps at way joins); the same tracks carry the trains.
+    const lrtDeck = (r: Rail) => (r.elevated ? 9 + Math.max(0, r.layer - 2) * 1.5 : 0.35);
+    const kj17 = station('KJ17');
+    const lrtWays = lines.rails.filter((r) => r.line === 'lrt' && !r.tunnel);
+    this.lrtTracks = chainWays(lrtWays).map((ch) => buildTrack(ch, lrtDeck, kj17 ? kj17.c : null));
+    const trackPts = (tr: Track, every: number) => { const out: THREE.Vector3[] = []; for (let i = tr.inStart; i <= tr.inEnd; i += every) out.push(new THREE.Vector3(tr.x[i], tr.y[i], tr.z[i])); const e = tr.inEnd; if ((e - tr.inStart) % every) out.push(new THREE.Vector3(tr.x[e], tr.y[e], tr.z[e])); return out; };
     const pierGeo = new THREE.BoxGeometry(2.2, 1, 2.2);
     for (const line of ['lrt', 'ktm', 'erl'] as const) {
       const grp = this.railGroups[line];
       const rs = lines.rails.filter((r) => r.line === line && !r.tunnel);
-      const deckY = (r: (typeof rs)[number]) => (r.elevated ? (line === 'lrt' ? 9 + Math.max(0, r.layer - 2) * 1.5 : 6 + Math.max(0, r.layer - 1) * 3) : 0.35);
-      grp.add(new THREE.Mesh(merge(rs.map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), line === 'lrt' ? 3.2 : 2.6))), this.mats.rail[line]));
+      const deckY = (r: (typeof rs)[number]) => (line === 'lrt' ? lrtDeck(r) : r.elevated ? 6 + Math.max(0, r.layer - 1) * 3 : 0.35);
+      const chained = line === 'lrt' ? new Set(chainWays(rs).flat()) : new Set<Rail>();
+      const ribbons = rs.filter((r) => !chained.has(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), line === 'lrt' ? 3.2 : 2.6));
+      if (line === 'lrt') for (const tr of this.lrtTracks) ribbons.push(ribbon(trackPts(tr, 2).map((p) => p.setY(p.y + 0.15)), 3.2)); // 15 cm above the roof tops it crosses (KJ17)
+      grp.add(new THREE.Mesh(merge(ribbons), this.mats.rail[line]));
       // piers under elevated track every ~32 m
       const piers: THREE.Vector3[] = [];
-      for (const r of rs.filter((r) => r.elevated)) {
+      if (line === 'lrt') for (const tr of this.lrtTracks) for (const p of trackPts(tr, 32)) piers.push(p);
+      for (const r of rs.filter((r) => r.elevated && !chained.has(r) && r.service !== 'crossover')) {
         let acc = 0;
         for (let i = 1; i < r.pts.length; i++) {
           const a = r.pts[i - 1], b = r.pts[i]; const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -201,6 +223,21 @@ export class World {
       }
       this.scene.add(grp);
     }
+    // trains (LRT only; the track builder is generic and could take KTM/ERL chains, not enabled)
+    this.trains = new Trains(this.lrtTracks, H);
+    this.scene.add(this.trains.group);
+
+    // landmark blocks whose footprint centroid lies outside the study square (full OSM outline, not clipped)
+    for (const l of landmarks.filter((l) => !l.buildingId)) {
+      for (const poly of l.polygons) {
+        const shape = new THREE.Shape(poly.outer.map(([x, n]) => new THREE.Vector2(x, n)));
+        for (const hole of poly.holes) shape.holes.push(new THREE.Path(hole.map(([x, n]) => new THREE.Vector2(x, n))));
+        const g = new THREE.ExtrudeGeometry(shape, { depth: l.height, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(g, this.mats.landmark); mesh.castShadow = true; mesh.receiveShadow = true;
+        this.landmarkGroup.add(mesh, new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), this.mats.edgeKey));
+      }
+    }
+    this.scene.add(this.landmarkGroup);
 
     // footways
     const fy = (f: { bridge: boolean; layer: number; indoor: boolean }) => (f.bridge ? 5 + Math.max(0, f.layer - 1) * 3 : f.layer > 0 ? 5 + (f.layer - 1) * 3 : 0.22);
@@ -293,6 +330,8 @@ export class World {
     m.edgeContext.opacity = parseFloat(cssVar('--scene-edge-context-opacity')) || 0.2;
     m.rail.lrt.color = cssColor('--c-lrt'); m.rail.ktm.color = cssColor('--c-ktm'); m.rail.erl.color = cssColor('--c-erl');
     m.foot.color = cssColor('--grey-2'); m.footBridge.color = cssColor('--ink');
+    m.landmark.color = cssColor('--landmark');
+    this.trains.setColors(cssColor('--train-body'), cssColor('--train-window'), cssColor('--train-accent'), edge, (parseFloat(cssVar('--scene-edge-opacity')) || 0.5) * 0.85);
     m.route.color = cssColor('--c-route'); m.routeDim.color = cssColor('--c-route');
     const dark = document.documentElement.dataset.theme === 'dark';
     this.hemiBase = dark ? 1.6 : 2.4; this.hemi.groundColor = new THREE.Color(dark ? 0x202020 : 0xbdbdb8);
@@ -310,9 +349,11 @@ export class World {
       if (md.buildingStyle === 'source') { mat = m.src[b.data.heightSource]; em = m.edgeKey; }
       else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] : m.context; em = b.data.zone ? m.edgeKey : m.edgeContext; }
       else if (md.buildingStyle === 'threshold') { const on = b.data.height >= md.threshold; mat = on ? m.build : m.fade; em = on ? m.edgeKey : m.edgeFade; }
+      if (md.landmarks && b.data.landmark) { mat = m.landmark; em = m.edgeKey; }
+      if (md.landmarks && b.data.coversLandmark) { mat = m.xray; em = m.edgeContext; }
       if (md.xray) { mat = m.xray; em = b.key ? m.edgeContext : m.edgeFade; }
       b.mesh.material = mat; b.edges.material = em;
-      b.mesh.castShadow = !md.xray;
+      b.mesh.castShadow = !md.xray && !(md.landmarks && b.data.coversLandmark);
     }
     for (const line of ['lrt', 'ktm', 'erl'] as const) {
       const st = md.rails[line]; const grp = this.railGroups[line];
@@ -344,7 +385,14 @@ export class World {
     }
     m.water.color = cssColor(md.muteWater ? '--scene-water-muted' : '--c-water');
     this.precinctGroup.visible = md.precincts;
+    this.landmarkGroup.visible = md.landmarks;
+    this.trains.group.visible = this.trainsOn && md.rails.lrt !== 'hidden';
   }
+
+  // ---------- trains ----------
+  /** Show or hide the animated LRT trainsets (scene life; user toggle). */
+  setTrains(on: boolean) { this.trainsOn = on; this.setMode({}); }
+  get trainsVisible() { return this.trainsOn; }
 
   // ---------- camera ----------
   currentView(): View {
@@ -395,6 +443,12 @@ export class World {
   setPixelRatio(stageScale: number) { this.renderer.setPixelRatio(Math.min(2, Math.max(1, window.devicePixelRatio * stageScale))); this.renderer.setSize(STAGE_W, STAGE_H, false); }
 
   private frame(now: number) {
+    // trains: run on a clamped clock that only advances while the page is visible;
+    // with prefers-reduced-motion they are shown static (one train standing at KJ17)
+    const dt = this.lastFrame ? (now - this.lastFrame) / 1000 : 0; this.lastFrame = now;
+    if (prefersReducedMotion()) this.trains.freeze(this.trains.reducedMotionClock());
+    else if (!document.hidden) this.trains.step(dt);
+    this.trains.update();
     if (Math.abs(this.viewShift - this.viewShiftTarget) > 0.3) { this.viewShift += (this.viewShiftTarget - this.viewShift) * 0.12; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
     else if (this.viewShift !== this.viewShiftTarget) { this.viewShift = this.viewShiftTarget; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
     this.stepTween(now);

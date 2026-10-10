@@ -7,6 +7,7 @@ import areasJ from './data/areas.json';
 import stationsJ from './data/stations.json';
 import routesJ from './data/routes.json';
 import namedJ from './data/named-outlines.json';
+import landmarksJ from './data/landmarks.json';
 
 export type XY = [number, number];
 export type Zone = 'eco' | 'gardens' | 'midvalley';
@@ -17,7 +18,7 @@ export interface HeightRef { value: number; unit: 'm' | 'floors'; floors: number
 export interface Building {
   id: string; name: string | null; type: string; part: boolean; parent: string | null;
   height: number; minHeight: number; levels: number | null; heightSource: HeightSource; heightNote?: string; heightRef?: HeightRef;
-  precinct: string | null; zone: Zone | null; station: string | null; area: number; c: XY; ring: XY[];
+  precinct: string | null; zone: Zone | null; landmark?: 'mosque'; coversLandmark?: boolean; station: string | null; area: number; c: XY; ring: XY[];
 }
 export interface Road { id: number; cls: string; name: string | null; w: number; bridge: boolean; tunnel: boolean; layer: number; pts: XY[] }
 export interface Rail { id: number; line: 'lrt' | 'ktm' | 'erl' | 'other'; name: string | null; elevated: boolean; tunnel: boolean; layer: number; service: string | null; pts: XY[] }
@@ -40,6 +41,12 @@ export interface NamedOutline {
   ring: XY[];
 }
 
+export interface Landmark {
+  id: string; kind: 'mosque'; name: string; nameEn: string | null; altName: string | null; religion: string | null;
+  c: XY; lat: number; lon: number; inStudyArea: boolean; buildingId: string | null; height: number; heightSource: HeightSource;
+  polygons: { outer: XY[]; holes: XY[][] }[];
+}
+export const landmarks = landmarksJ as unknown as Landmark[];
 export const meta = metaJ;
 export const buildings = buildingsJ as unknown as Building[];
 export const lines = linesJ as unknown as { roads: Road[]; rails: Rail[]; footways: Footway[]; waterLines: WaterLine[] };

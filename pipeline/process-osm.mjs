@@ -230,6 +230,39 @@ for (const z of ['eco', 'gardens', 'midvalley']) {
   zoneStats[z] = { blocks: bs.length, footprintM2: cells.size, namedBuildings: named, tallest: tallest ? { name: tallest.name, height: tallest.height, heightSource: tallest.heightSource } : null, centroid: [r1(cx), r1(cy)] };
 }
 
+// ---------- landmark mosques (chapter 00) ----------
+// Selected by OSM name (both are building=mosque; the Masjid Jamek way and the outer way of the
+// An Nur relation carry amenity=place_of_worship + religion=muslim). Masjid An Nur (alt_name
+// "Balai Islam An-Nur TNB Bangsar") is the mosque in the TNB Bangsar compound; its footprint centroid
+// lies ~10 m west of the study square, so it is not counted among the study-area blocks: it is kept
+// here as a landmark with its full, unclipped OSM outline (already part of the existing Overpass pull).
+const LANDMARK_MOSQUES = ['Masjid Jamek Abdullah Hukum', 'Masjid An Nur'];
+const landmarks = [];
+for (const name of LANDMARK_MOSQUES) {
+  const el = els.find((e) => T(e).name === name && T(e).building);
+  if (!el) { console.warn('landmark not found:', name); continue; }
+  const t = T(el); const id = `${el.type}/${el.id}`;
+  const outers = elRings(el).map((g) => dropClosing(g.map(proj))).filter((r) => r.length >= 3);
+  const holes = el.type === 'relation' ? relationRings(el, 'inner').map((g) => dropClosing(g.map(proj))).filter((r) => r.length >= 3) : [];
+  const ccw = (r) => (area(r) < 0 ? r.slice().reverse() : r);
+  const polys = outers.map((o) => ({ outer: rnd(ccw(o)), holes: holes.filter((h) => inside(h[0], o)).map((h) => rnd(h)) }));
+  const big = outers.map(ccw).sort((a, b) => area(b) - area(a))[0];
+  const c = centroid(big);
+  const geo = (el.type === 'relation' ? el.members.flatMap((m) => m.geometry || []) : el.geometry);
+  const lat = geo.reduce((s, g) => s + g.lat, 0) / geo.length, lon = geo.reduce((s, g) => s + g.lon, 0) / geo.length;
+  const b = buildings.find((x) => x.id === id);
+  if (b) {
+    b.landmark = 'mosque';
+    // OSM also maps an unnamed 5-level building (way/594385371) whose outline encloses the mosque outline;
+    // flag such enclosing blocks so the Overview can draw them translucent and the mosque stays visible
+    for (const o of buildings) if (o !== b && o.height > b.height && inside(b.c, o.ring)) o.coversLandmark = true;
+  }
+  const info = heightInfo(t) || { height: estimate(t), heightSource: 'estimate' };
+  landmarks.push({ id, kind: 'mosque', name: t.name, nameEn: t['name:en'] || null, altName: t.alt_name || null, religion: t.religion || els.find((e) => e.type === 'way' && el.members?.some((m) => m.ref === e.id && m.role === 'outer'))?.tags?.religion || null,
+    c: [r1(c[0]), r1(c[1])], lat: +lat.toFixed(7), lon: +lon.toFixed(7), inStudyArea: inBox(c), buildingId: b ? id : null,
+    height: b ? b.height : r1(info.height), heightSource: b ? b.heightSource : info.heightSource, polygons: b ? [] : polys });
+}
+
 const outlineIndex = outlines.filter((o) => o.tags.name && inBox(o.c)).map((o) => {
   const own = heightInfo(o.tags);
   const ph = o.parts.map((p) => buildings.find((b) => b.id === p.id)).filter(Boolean);
@@ -410,6 +443,7 @@ mkdirSync('src/data', { recursive: true });
 const w = (f, d) => writeFileSync(`src/data/${f}`, JSON.stringify(d));
 w('meta.json', meta);
 w('buildings.json', buildings);
+w('landmarks.json', landmarks);
 w('lines.json', { roads, rails, footways: footways.map((f) => ({ ...f, pts: rnd(f.pts) })), waterLines });
 w('areas.json', { waterAreas, green, precincts });
 w('stations.json', stations);
