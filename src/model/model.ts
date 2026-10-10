@@ -121,6 +121,11 @@ export class World {
   trains!: Trains;
   private trainsOn = true;
   private lastFrame = 0;
+  // turntable (00 Overview): slow continuous orbit about the target at the preset pitch / distance. Paused while the
+  // user drags / zooms (resumes TURN_RESUME_MS after they stop), during flights, while the tab is hidden, and never
+  // runs under prefers-reduced-motion.
+  static readonly TURN_PERIOD_S = 75; static readonly TURN_RESUME_MS = 3000;
+  private turnOn = false; private turnHeld = false; private turnResumeAt = 0;
   private landmarkGroup = new THREE.Group(); // landmark blocks outside the study square (shown with mode.landmarks)
 
   constructor(container: HTMLElement) {
@@ -136,7 +141,8 @@ export class World {
     this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     Object.assign(this.controls, { enableDamping: true, dampingFactor: 0.08, minPolarAngle: 0.12, maxPolarAngle: 1.3, minDistance: 220, maxDistance: 3000, screenSpacePanning: false, panSpeed: 0.6, rotateSpeed: 0.6, zoomSpeed: 0.8 });
-    this.controls.addEventListener('start', () => { this.tween = null; this.onUserInteract?.(); });
+    this.controls.addEventListener('start', () => { this.tween = null; this.turnHeld = true; this.onUserInteract?.(); });
+    this.controls.addEventListener('end', () => { this.turnHeld = false; this.turnResumeAt = performance.now() + World.TURN_RESUME_MS; });
     this.controls.addEventListener('change', () => {
       const t = this.controls.target; t.x = THREE.MathUtils.clamp(t.x, -H - 50, H + 50); t.z = THREE.MathUtils.clamp(t.z, -H - 50, H + 50); t.y = THREE.MathUtils.clamp(t.y, 0, 120);
     });
@@ -404,12 +410,22 @@ export class World {
     const off = this.camera.position.clone().sub(this.controls.target); const s = new THREE.Spherical().setFromVector3(off);
     const t = this.controls.target; return { target: [t.x, t.y, t.z], azimuth: s.theta, polar: s.phi, distance: s.radius };
   }
+  /** Start / stop the 00 turntable orbit (it starts from wherever the camera is once any flight has landed). */
+  setTurntable(on: boolean) { this.turnOn = on; this.turnHeld = false; this.turnResumeAt = 0; }
+  /** True while the turntable is actually advancing the bearing this frame. */
+  turntableActive(now = performance.now()) { return this.turnOn && !this.tween && !this.turnHeld && now >= this.turnResumeAt && !document.hidden && !prefersReducedMotion(); }
+  private stepTurntable(now: number, dt: number) {
+    if (!this.turntableActive(now)) return;
+    const off = this.camera.position.clone().sub(this.controls.target); const s = new THREE.Spherical().setFromVector3(off);
+    s.theta += (Math.PI * 2 / World.TURN_PERIOD_S) * Math.min(dt, 0.1); // clamped: no jump after a stall / hidden tab
+    this.camera.position.copy(this.controls.target).add(off.setFromSpherical(s)); this.camera.lookAt(this.controls.target);
+  }
   /** True while a camera flight (chapter preset / reset) is animating. */
   isFlying() { return this.tween != null; }
   /** Whether the camera is near a view: target within 8 m, bearing / tilt within ~2°, distance within 4 %. */
-  isNear(v: View) {
+  isNear(v: View, ignoreBearing = false) {
     const c = this.currentView();
-    const dAz = Math.abs(Math.atan2(Math.sin(c.azimuth - v.azimuth), Math.cos(c.azimuth - v.azimuth)));
+    const dAz = ignoreBearing ? 0 : Math.abs(Math.atan2(Math.sin(c.azimuth - v.azimuth), Math.cos(c.azimuth - v.azimuth)));
     return Math.hypot(c.target[0] - v.target[0], c.target[1] - v.target[1], c.target[2] - v.target[2]) < 8 && dAz < 0.035 && Math.abs(c.polar - v.polar) < 0.035 && Math.abs(Math.log(c.distance / v.distance)) < 0.04;
   }
   flyTo(view: View, instant = prefersReducedMotion()) {
@@ -465,6 +481,7 @@ export class World {
     if (Math.abs(this.viewShift - this.viewShiftTarget) > 0.3) { this.viewShift += (this.viewShiftTarget - this.viewShift) * 0.12; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
     else if (this.viewShift !== this.viewShiftTarget) { this.viewShift = this.viewShiftTarget; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
     this.stepTween(now);
+    this.stepTurntable(now, dt);
     if (!this.tween) this.controls.update();
     // route draw-on
     const k = prefersReducedMotion() ? 1 : Math.min(1, (now - this.routeDrawStart) / 2600);
