@@ -91,7 +91,7 @@ export class World {
     edgeKey: new THREE.LineBasicMaterial({ transparent: true }), edgeContext: new THREE.LineBasicMaterial({ transparent: true }),
     edgeFade: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.08 }),
     // polygon offset: the deck sits exactly on top of the KJ17 roof block (both 10.5 m); keep it on top without z-fighting
-    rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
+    rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm2: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
     pier: new THREE.MeshLambertMaterial(),
     foot: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), footBridge: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }),
     route: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
@@ -203,9 +203,12 @@ export class World {
       const rs = lines.rails.filter((r) => r.line === line && !r.tunnel);
       const deckY = (r: (typeof rs)[number]) => (line === 'lrt' ? lrtDeck(r) : r.elevated ? 6 + Math.max(0, r.layer - 1) * 3 : 0.35);
       const chained = line === 'lrt' ? new Set(chainWays(rs).flat()) : new Set<Rail>();
-      const ribbons = rs.filter((r) => !chained.has(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), line === 'lrt' ? 3.2 : 2.6));
+      // KTM: one mesh per Komuter line (route 2 = Tanjung Malim–Port Klang gets its own colour)
+      const isK2 = (r: Rail) => line === 'ktm' && r.route === 2;
+      const ribbons = rs.filter((r) => !chained.has(r) && !isK2(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), line === 'lrt' ? 3.2 : 2.6));
       if (line === 'lrt') for (const tr of this.lrtTracks) ribbons.push(ribbon(trackPts(tr, 2).map((p) => p.setY(p.y + 0.15)), 3.2)); // 15 cm above the roof tops it crosses (KJ17)
       grp.add(new THREE.Mesh(merge(ribbons), this.mats.rail[line]));
+      if (line === 'ktm') { const k2 = rs.filter(isK2).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), 2.6)); if (k2.length) grp.add(new THREE.Mesh(merge(k2), this.mats.rail.ktm2)); }
       // piers under elevated track every ~32 m
       const piers: THREE.Vector3[] = [];
       if (line === 'lrt') for (const tr of this.lrtTracks) for (const p of trackPts(tr, 32)) piers.push(p);
@@ -329,7 +332,7 @@ export class World {
     for (const e of [m.edgeKey, m.edgeContext, m.edgeFade, m.precinct, m.frame]) e.color = edge;
     m.edgeKey.opacity = parseFloat(cssVar('--scene-edge-opacity')) || 0.5;
     m.edgeContext.opacity = parseFloat(cssVar('--scene-edge-context-opacity')) || 0.2;
-    m.rail.lrt.color = cssColor('--c-lrt'); m.rail.ktm.color = cssColor('--c-ktm'); m.rail.erl.color = cssColor('--c-erl');
+    m.rail.lrt.color = cssColor('--c-lrt'); m.rail.ktm.color = cssColor('--c-ktm1'); m.rail.ktm2.color = cssColor('--c-ktm2'); m.rail.erl.color = cssColor('--c-erl');
     m.foot.color = cssColor('--grey-2'); m.footBridge.color = cssColor('--ink');
     m.landmark.color = cssColor('--landmark'); m.podium.color = cssColor('--podium');
     this.trains.setColors(cssColor('--train-body'), cssColor('--train-window'), cssColor('--train-accent'), edge, (parseFloat(cssVar('--scene-edge-opacity')) || 0.5) * 0.85);
@@ -360,6 +363,7 @@ export class World {
       const st = md.rails[line]; const grp = this.railGroups[line];
       grp.visible = st !== 'hidden';
       m.rail[line].opacity = st === 'highlight' ? 1 : 0.35;
+      if (line === 'ktm') m.rail.ktm2.opacity = m.rail.ktm.opacity;
     }
     this.footGroup.visible = md.footways === 'faint' || md.footways === 'show';
     this.footRain.visible = md.footways === 'rain';

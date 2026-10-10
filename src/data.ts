@@ -21,7 +21,8 @@ export interface Building {
   precinct: string | null; zone: Zone | null; landmark?: 'mosque'; podium?: string; podiumFor?: string; podiumName?: string; podiumNameSource?: string; station: string | null; area: number; c: XY; ring: XY[];
 }
 export interface Road { id: number; cls: string; name: string | null; w: number; bridge: boolean; tunnel: boolean; layer: number; pts: XY[] }
-export interface Rail { id: number; line: 'lrt' | 'ktm' | 'erl' | 'other'; name: string | null; elevated: boolean; tunnel: boolean; layer: number; service: string | null; pts: XY[] }
+/** route: KTM Komuter line of a KTM track (1 = Batu Caves–Pulau Sebang, 2 = Tanjung Malim–Port Klang), from OSM route relations; null otherwise. */
+export interface Rail { id: number; line: 'lrt' | 'ktm' | 'erl' | 'other'; route?: 1 | 2 | null; routeInferred?: boolean; name: string | null; elevated: boolean; tunnel: boolean; layer: number; service: string | null; pts: XY[] }
 export type Shelter = 'indoor' | 'covered-tag' | 'in-building' | 'open';
 export interface Footway { id: number; kind: string; bridge: boolean; covered: boolean; indoor: boolean; layer: number; sheltered: boolean; shelter: Shelter; pts: XY[] }
 export interface WaterLine { id: number; kind: string; name: string | null; width: number | null; pts: XY[] }

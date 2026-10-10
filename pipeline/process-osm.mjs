@@ -439,6 +439,26 @@ function computeRoute(id, from, to) {
 const routes = [['leg1', 'KJ17', 'GARDENS'], ['leg2', 'GARDENS', 'MEGAMALL'], ['leg3', 'MEGAMALL', 'KB01']].map(([id, a, b]) => computeRoute(id, a, b));
 const walks = [['w-kj17-megamall', 'KJ17', 'MEGAMALL'], ['w-kb01-gardens', 'KB01', 'GARDENS'], ['w-kj17-eco', 'KJ17', 'ECO'], ['w-megamall-gardens', 'MEGAMALL', 'GARDENS']].map(([id, a, b]) => computeRoute(id, a, b));
 
+// ---------- KTM Komuter line per track (route relations, raw/ktm-routes.json) ----------
+// The Overpass pull has no route relations, so the KTM Komuter line of each track way was looked up
+// once with the OSM API (GET /way/{id}/relations, 2026-10-10): ref 1 = Batu Caves–Pulau Sebang Line
+// (KB codes), ref 2 = Tanjung Malim–Port Klang Line (KD codes). Ways in no Komuter relation (a crossover,
+// short connectors) take the line of the nearest referenced KTM segment.
+{
+  const KR = JSON.parse(readFileSync('raw/ktm-routes.json', 'utf8')).ways;
+  const ktm = rails.filter((r) => r.line === 'ktm');
+  for (const r of ktm) { const refs = KR[r.id]?.refs ?? []; r.route = refs.length === 1 ? Number(refs[0]) : null; }
+  const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; const u = L2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)) : 0; return Math.hypot(p[0] - a[0] - u * dx, p[1] - a[1] - u * dy); };
+  const polyD = (p, pts) => { let m = Infinity; for (let i = 1; i < pts.length; i++) m = Math.min(m, segD(p, pts[i - 1], pts[i])); return m; };
+  const known = ktm.filter((r) => r.route);
+  for (const r of ktm.filter((r) => !r.route)) {
+    let best = null, bd = Infinity;
+    for (const k of known) { const d = Math.min(polyD(r.pts[0], k.pts), polyD(r.pts[r.pts.length - 1], k.pts)); if (d < bd) { bd = d; best = k; } }
+    r.route = best ? best.route : null; r.routeInferred = true;
+  }
+  for (const r of rails) if (r.line !== 'ktm') r.route = null;
+}
+
 // ---------- summary stats (all derived from the pulled OSM data) ----------
 const count = (f) => buildings.filter(f).length;
 const railLen = (line) => Math.round(rails.filter((r) => r.line === line && !r.service).reduce((s, r) => s + len(r.pts), 0));
@@ -455,6 +475,7 @@ const meta = {
     stations: stations.length,
   },
   railLengthsM: { lrt: railLen('lrt'), ktm: railLen('ktm'), erl: railLen('erl') },
+  ktmRouteM: { 1: Math.round(rails.filter((r) => r.line === 'ktm' && r.route === 1 && !r.service).reduce((s, r) => s + len(r.pts), 0)), 2: Math.round(rails.filter((r) => r.line === 'ktm' && r.route === 2 && !r.service).reduce((s, r) => s + len(r.pts), 0)) },
   footwayLengthM: Math.round(footways.reduce((s, f) => s + len(f.pts), 0)),
   footbridgeLengthM: Math.round(footways.filter((f) => f.bridge).reduce((s, f) => s + len(f.pts), 0)),
   shelteredFootwayM: Math.round(footways.filter((f) => f.sheltered).reduce((s, f) => s + len(f.pts), 0)),
