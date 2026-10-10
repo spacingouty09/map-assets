@@ -404,6 +404,14 @@ export class World {
     const off = this.camera.position.clone().sub(this.controls.target); const s = new THREE.Spherical().setFromVector3(off);
     const t = this.controls.target; return { target: [t.x, t.y, t.z], azimuth: s.theta, polar: s.phi, distance: s.radius };
   }
+  /** True while a camera flight (chapter preset / reset) is animating. */
+  isFlying() { return this.tween != null; }
+  /** Whether the camera is near a view: target within 8 m, bearing / tilt within ~2°, distance within 4 %. */
+  isNear(v: View) {
+    const c = this.currentView();
+    const dAz = Math.abs(Math.atan2(Math.sin(c.azimuth - v.azimuth), Math.cos(c.azimuth - v.azimuth)));
+    return Math.hypot(c.target[0] - v.target[0], c.target[1] - v.target[1], c.target[2] - v.target[2]) < 8 && dAz < 0.035 && Math.abs(c.polar - v.polar) < 0.035 && Math.abs(Math.log(c.distance / v.distance)) < 0.04;
+  }
   flyTo(view: View, instant = prefersReducedMotion()) {
     if (instant) { this.tween = null; this.applyView(view); return; }
     this.tween = { from: this.currentView(), to: view, t0: performance.now(), dur: 1900 };
