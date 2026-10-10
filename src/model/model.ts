@@ -99,6 +99,7 @@ export class World {
     precinct: new THREE.LineDashedMaterial({ dashSize: 8, gapSize: 6, transparent: true, opacity: 0.7 }),
     frame: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 }),
     landmark: new THREE.MeshLambertMaterial(),
+    podium: new THREE.MeshLambertMaterial(), // block a landmark stands on (Overview)
   };
   private railGroups: Record<'lrt' | 'ktm' | 'erl', THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group() };
   private footGroup = new THREE.Group();
@@ -232,7 +233,7 @@ export class World {
       for (const poly of l.polygons) {
         const shape = new THREE.Shape(poly.outer.map(([x, n]) => new THREE.Vector2(x, n)));
         for (const hole of poly.holes) shape.holes.push(new THREE.Path(hole.map(([x, n]) => new THREE.Vector2(x, n))));
-        const g = new THREE.ExtrudeGeometry(shape, { depth: l.height, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
+        const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1, l.height - (l.base || 0)), bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, l.base || 0, 0);
         const mesh = new THREE.Mesh(g, this.mats.landmark); mesh.castShadow = true; mesh.receiveShadow = true;
         this.landmarkGroup.add(mesh, new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), this.mats.edgeKey));
       }
@@ -330,7 +331,7 @@ export class World {
     m.edgeContext.opacity = parseFloat(cssVar('--scene-edge-context-opacity')) || 0.2;
     m.rail.lrt.color = cssColor('--c-lrt'); m.rail.ktm.color = cssColor('--c-ktm'); m.rail.erl.color = cssColor('--c-erl');
     m.foot.color = cssColor('--grey-2'); m.footBridge.color = cssColor('--ink');
-    m.landmark.color = cssColor('--landmark');
+    m.landmark.color = cssColor('--landmark'); m.podium.color = cssColor('--podium');
     this.trains.setColors(cssColor('--train-body'), cssColor('--train-window'), cssColor('--train-accent'), edge, (parseFloat(cssVar('--scene-edge-opacity')) || 0.5) * 0.85);
     m.route.color = cssColor('--c-route'); m.routeDim.color = cssColor('--c-route');
     const dark = document.documentElement.dataset.theme === 'dark';
@@ -350,10 +351,10 @@ export class World {
       else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] : m.context; em = b.data.zone ? m.edgeKey : m.edgeContext; }
       else if (md.buildingStyle === 'threshold') { const on = b.data.height >= md.threshold; mat = on ? m.build : m.fade; em = on ? m.edgeKey : m.edgeFade; }
       if (md.landmarks && b.data.landmark) { mat = m.landmark; em = m.edgeKey; }
-      if (md.landmarks && b.data.coversLandmark) { mat = m.xray; em = m.edgeContext; }
+      if (md.landmarks && b.data.podiumFor) { mat = m.podium; em = m.edgeKey; }
       if (md.xray) { mat = m.xray; em = b.key ? m.edgeContext : m.edgeFade; }
       b.mesh.material = mat; b.edges.material = em;
-      b.mesh.castShadow = !md.xray && !(md.landmarks && b.data.coversLandmark);
+      b.mesh.castShadow = !md.xray;
     }
     for (const line of ['lrt', 'ktm', 'erl'] as const) {
       const st = md.rails[line]; const grp = this.railGroups[line];

@@ -18,7 +18,7 @@ export interface HeightRef { value: number; unit: 'm' | 'floors'; floors: number
 export interface Building {
   id: string; name: string | null; type: string; part: boolean; parent: string | null;
   height: number; minHeight: number; levels: number | null; heightSource: HeightSource; heightNote?: string; heightRef?: HeightRef;
-  precinct: string | null; zone: Zone | null; landmark?: 'mosque'; coversLandmark?: boolean; station: string | null; area: number; c: XY; ring: XY[];
+  precinct: string | null; zone: Zone | null; landmark?: 'mosque'; podium?: string; podiumFor?: string; podiumName?: string; podiumNameSource?: string; station: string | null; area: number; c: XY; ring: XY[];
 }
 export interface Road { id: number; cls: string; name: string | null; w: number; bridge: boolean; tunnel: boolean; layer: number; pts: XY[] }
 export interface Rail { id: number; line: 'lrt' | 'ktm' | 'erl' | 'other'; name: string | null; elevated: boolean; tunnel: boolean; layer: number; service: string | null; pts: XY[] }
@@ -43,7 +43,10 @@ export interface NamedOutline {
 
 export interface Landmark {
   id: string; kind: 'mosque'; name: string; nameEn: string | null; altName: string | null; religion: string | null;
-  c: XY; lat: number; lon: number; inStudyArea: boolean; buildingId: string | null; height: number; heightSource: HeightSource;
+  c: XY; lat: number; lon: number; inStudyArea: boolean; buildingId: string | null;
+  /** absolute top (m) and base elevation (m) above ground: a landmark on a podium starts at the podium roof */
+  height: number; base: number; heightSource: HeightSource;
+  podium: { id: string; name: string; nameSource: string; levels: number | null; storeyM: number | null; roof: number } | null;
   polygons: { outer: XY[]; holes: XY[][] }[];
 }
 export const landmarks = landmarksJ as unknown as Landmark[];

@@ -237,6 +237,16 @@ for (const z of ['eco', 'gardens', 'midvalley']) {
 // lies ~10 m west of the study square, so it is not counted among the study-area blocks: it is kept
 // here as a landmark with its full, unclipped OSM outline (already part of the existing Overpass pull).
 const LANDMARK_MOSQUES = ['Masjid Jamek Abdullah Hukum', 'Masjid An Nur'];
+// Landmarks that stand on another block. Masjid Jamek Abdullah Hukum sits on the roof of the car park
+// "Parking Masjid Abdullah Hukum Bangsar" (local knowledge from the project owner). In OSM that car park is
+// the unnamed building way/594385371 (building:levels = 5) whose outline encloses the mosque outline.
+// The podium keeps its OSM levels height (levels x LEVEL_H); the mosque's base (minHeight) = podium roof and
+// its own placeholder height (estimate) is added on top. An OSM name on the podium, if ever tagged, wins.
+// 2016 press reports (FMT / Bernama) describe "a two-storey mosque on top of a seven level car park podium";
+// the model keeps the OSM level count (see README).
+const LANDMARK_PODIUMS = {
+  'way/659511483': { podium: 'way/594385371', name: 'Parking Masjid Abdullah Hukum Bangsar', nameSource: 'local knowledge (project owner)' },
+};
 const landmarks = [];
 for (const name of LANDMARK_MOSQUES) {
   const el = els.find((e) => T(e).name === name && T(e).building);
@@ -253,14 +263,26 @@ for (const name of LANDMARK_MOSQUES) {
   const b = buildings.find((x) => x.id === id);
   if (b) {
     b.landmark = 'mosque';
-    // OSM also maps an unnamed 5-level building (way/594385371) whose outline encloses the mosque outline;
-    // flag such enclosing blocks so the Overview can draw them translucent and the mosque stays visible
-    for (const o of buildings) if (o !== b && o.height > b.height && inside(b.c, o.ring)) o.coversLandmark = true;
+    const cfg = LANDMARK_PODIUMS[id];
+    const pod = cfg && buildings.find((o) => o.id === cfg.podium && inside(b.c, o.ring));
+    if (cfg && !pod) console.warn('podium not found / does not enclose landmark:', cfg.podium, id);
+    if (pod) {
+      const podEl = els.find((e) => `${e.type}/${e.id}` === pod.id); const pt = T(podEl || {});
+      const own = b.height - b.minHeight; // the mosque's own (placeholder) height
+      pod.podiumFor = id;
+      pod.podiumName = pt.name || cfg.name; pod.podiumNameSource = pt.name ? 'osm' : cfg.nameSource;
+      pod.podiumTags = { amenity: pt.amenity || null, parking: pt.parking || null };
+      b.minHeight = pod.height; b.height = r1(pod.height + own);
+      b.heightNote = `estimate: ${own} m placeholder above the ${pod.height} m roof of ${pod.podiumName} (${pod.levels} levels x ${LEVEL_H} m, OSM building:levels; mosque on the car park: ${cfg.nameSource})`;
+      b.podium = pod.id;
+    }
   }
   const info = heightInfo(t) || { height: estimate(t), heightSource: 'estimate' };
   landmarks.push({ id, kind: 'mosque', name: t.name, nameEn: t['name:en'] || null, altName: t.alt_name || null, religion: t.religion || els.find((e) => e.type === 'way' && el.members?.some((m) => m.ref === e.id && m.role === 'outer'))?.tags?.religion || null,
     c: [r1(c[0]), r1(c[1])], lat: +lat.toFixed(7), lon: +lon.toFixed(7), inStudyArea: inBox(c), buildingId: b ? id : null,
-    height: b ? b.height : r1(info.height), heightSource: b ? b.heightSource : info.heightSource, polygons: b ? [] : polys });
+    height: b ? b.height : r1(info.height), base: b ? b.minHeight : r1(info.minHeight || 0), heightSource: b ? b.heightSource : info.heightSource,
+    podium: b?.podium ? (({ id, podiumName: name, podiumNameSource: nameSource, levels, height }) => ({ id, name, nameSource, levels, storeyM: levels ? r1(height / levels) : null, roof: height }))(buildings.find((o) => o.id === b.podium)) : null,
+    polygons: b ? [] : polys });
 }
 
 const outlineIndex = outlines.filter((o) => o.tags.name && inBox(o.c)).map((o) => {
@@ -428,7 +450,7 @@ const meta = {
   counts: {
     rawElements: els.length, outlines: outlines.length, parts: parts.length, outlinesReplacedByParts: skippedOutlines,
     buildings: buildings.length, heightOsm: count((b) => b.heightSource === 'osm'), heightLevels: count((b) => b.heightSource === 'levels'), heightEstimate: count((b) => b.heightSource === 'estimate'), heightCited: count((b) => b.heightSource === 'cited'),
-    heightInherited: count((b) => !!b.heightNote), roads: roads.length, footways: new Set(footways.map((f) => f.id)).size,
+    heightInherited: count((b) => /inherited/.test(b.heightNote || '')), roads: roads.length, footways: new Set(footways.map((f) => f.id)).size,
     footbridges: new Set(footways.filter((f) => f.bridge).map((f) => f.id)).size, indoorCorridors: new Set(footways.filter((f) => f.indoor || f.kind === 'corridor').map((f) => f.id)).size,
     stations: stations.length,
   },
