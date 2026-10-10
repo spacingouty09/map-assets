@@ -202,6 +202,34 @@ for (const src of HS.buildings) {
 }
 
 // named outlines (kept even when rendered via parts) for labels/anchors
+// ---------- overview zones (chapter 00) ----------
+// Rule: (1) The Gardens = buildings named in GARDENS_NAMES, or parts of an outline with one of those names
+//           (the Gardens towers and St. Giles residences are mapped as parts of the "The Gardens Mall" outline);
+//       (2) KL Eco City = remaining buildings whose centroid lies in the OSM landuse polygon "KL Eco City";
+//       (3) Mid Valley = remaining buildings whose centroid lies in the OSM landuse polygon "Mid Valley City"
+//           (Megamall and its surroundings; The Gardens is inside this polygon and is split out by rule 1);
+//       everything else has no zone.
+const GARDENS_NAMES = new Set(['The Gardens Mall', 'The Gardens North Tower', 'The Gardens South Tower', 'St. Giles The Gardens Residences', 'The Gardens Hotel', 'The Gardens Residences']);
+const outlineName = new Map(outlines.map((o) => [o.id, o.tags.name]));
+for (const b of buildings) {
+  const parentName = b.parent ? outlineName.get(b.parent) : null;
+  b.zone = GARDENS_NAMES.has(b.name) || GARDENS_NAMES.has(parentName) ? 'gardens' : b.precinct === 'KL Eco City' ? 'eco' : b.precinct === 'Mid Valley City' ? 'midvalley' : null;
+}
+// footprint per zone: union of block footprints rasterised on a 1 m grid (overlapping parts counted once)
+const zoneStats = {};
+for (const z of ['eco', 'gardens', 'midvalley']) {
+  const bs = buildings.filter((b) => b.zone === z);
+  const cells = new Set();
+  for (const b of bs) {
+    const xs = b.ring.map((p) => p[0]), ys = b.ring.map((p) => p[1]);
+    for (let x = Math.floor(Math.min(...xs)); x < Math.max(...xs); x++) for (let y = Math.floor(Math.min(...ys)); y < Math.max(...ys); y++) if (inside([x + 0.5, y + 0.5], b.ring)) cells.add(x * 100000 + y);
+  }
+  const named = [...new Set(bs.filter((b) => b.name).map((b) => b.name))];
+  const tallest = bs.filter((b) => b.heightSource !== 'estimate').sort((a, b) => b.height - a.height)[0];
+  const cx = bs.reduce((s, b) => s + b.c[0], 0) / (bs.length || 1), cy = bs.reduce((s, b) => s + b.c[1], 0) / (bs.length || 1);
+  zoneStats[z] = { blocks: bs.length, footprintM2: cells.size, namedBuildings: named, tallest: tallest ? { name: tallest.name, height: tallest.height, heightSource: tallest.heightSource } : null, centroid: [r1(cx), r1(cy)] };
+}
+
 const outlineIndex = outlines.filter((o) => o.tags.name && inBox(o.c)).map((o) => {
   const own = heightInfo(o.tags);
   const ph = o.parts.map((p) => buildings.find((b) => b.id === p.id)).filter(Boolean);
@@ -360,6 +388,7 @@ const walks = [['w-kj17-megamall', 'KJ17', 'MEGAMALL'], ['w-kb01-gardens', 'KB01
 const count = (f) => buildings.filter(f).length;
 const railLen = (line) => Math.round(rails.filter((r) => r.line === line && !r.service).reduce((s, r) => s + len(r.pts), 0));
 const meta = {
+  zones: zoneStats,
   source: 'OpenStreetMap via Overpass API', attribution: '© OpenStreetMap contributors (ODbL)',
   fetchedAt: raw.fetched_at || null, center: CENTER, halfSizeM: H, bbox: BBOX,
   levelHeightM: LEVEL_H, walkSpeedMPerMin: WALK_SPEED,

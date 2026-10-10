@@ -9,13 +9,15 @@ import routesJ from './data/routes.json';
 import namedJ from './data/named-outlines.json';
 
 export type XY = [number, number];
+export type Zone = 'eco' | 'gardens' | 'midvalley';
+export const ZONES: Zone[] = ['eco', 'gardens', 'midvalley'];
 export type HeightSource = 'osm' | 'levels' | 'estimate' | 'cited';
 export interface HeightRef { value: number; unit: 'm' | 'floors'; floors: number | null; storeyHeight: number | null; publisher: string; url: string; fetched: string; note?: string; ctbuhEstimated: boolean }
 
 export interface Building {
   id: string; name: string | null; type: string; part: boolean; parent: string | null;
   height: number; minHeight: number; levels: number | null; heightSource: HeightSource; heightNote?: string; heightRef?: HeightRef;
-  precinct: string | null; station: string | null; area: number; c: XY; ring: XY[];
+  precinct: string | null; zone: Zone | null; station: string | null; area: number; c: XY; ring: XY[];
 }
 export interface Road { id: number; cls: string; name: string | null; w: number; bridge: boolean; tunnel: boolean; layer: number; pts: XY[] }
 export interface Rail { id: number; line: 'lrt' | 'ktm' | 'erl' | 'other'; name: string | null; elevated: boolean; tunnel: boolean; layer: number; service: string | null; pts: XY[] }

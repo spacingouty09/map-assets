@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildings, lines, areas, routes, walks, meta, type XY, type Building, type HeightSource, type Route } from './data';
+import { buildings, lines, areas, routes, walks, meta, type XY, type Building, type HeightSource, type Route, type Zone } from './data';
 import { sunVector } from './sun';
 
 export interface View { target: [number, number, number]; azimuth: number; polar: number; distance: number }
@@ -18,7 +18,7 @@ export interface SceneMode {
   shadeDots: boolean;
   muteWater: boolean;
   xray: boolean;
-  buildingStyle: 'default' | 'source' | 'threshold';
+  buildingStyle: 'default' | 'source' | 'threshold' | 'zone';
   threshold: number;
   precincts: boolean;
 }
@@ -29,7 +29,6 @@ export const DEFAULT_MODE: SceneMode = {
 };
 
 const STAGE_W = 1920, STAGE_H = 1080;
-const VIEW_SHIFT_X = 155; // shift the model right so the left text column stays clear
 const H = meta.halfSizeM;
 const v3 = (x: number, north: number, y = 0) => new THREE.Vector3(x, y, -north);
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -86,6 +85,7 @@ export class World {
     src: { osm: new THREE.MeshLambertMaterial(), levels: new THREE.MeshLambertMaterial(), estimate: new THREE.MeshLambertMaterial(), cited: new THREE.MeshLambertMaterial() } as Record<HeightSource, THREE.MeshLambertMaterial>,
     rainCovered: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }), rainOpen: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
     walker: new THREE.MeshBasicMaterial(), dots: new THREE.MeshBasicMaterial(),
+    zone: { eco: new THREE.MeshLambertMaterial(), gardens: new THREE.MeshLambertMaterial(), midvalley: new THREE.MeshLambertMaterial() } as Record<Zone, THREE.MeshLambertMaterial>,
     edgeKey: new THREE.LineBasicMaterial({ transparent: true }), edgeContext: new THREE.LineBasicMaterial({ transparent: true }),
     edgeFade: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.08 }),
     rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
@@ -98,8 +98,8 @@ export class World {
   };
   private railGroups: Record<'lrt' | 'ktm' | 'erl', THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group() };
   private footGroup = new THREE.Group();
-  private routeMeshes: THREE.Mesh[] = []; // legs (chapter 05)
-  private walkMeshes = new Map<string, THREE.Mesh>(); // walking routes (chapter 06)
+  private routeMeshes: THREE.Mesh[] = []; // legs (chapter 06)
+  private walkMeshes = new Map<string, THREE.Mesh>(); // walking routes (chapter 07)
   private rainGroups = new Map<string, THREE.Group>(); // per route: covered / open-air ribbons
   private footRain = new THREE.Group();
   private walker = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 3, 24), this.mats.walker);
@@ -107,6 +107,8 @@ export class World {
   private routeDrawStart = 0;
   private walkDrawStart = 0;
   private hemiBase = 2.4; private sunBase = 1.5;
+  /** Horizontal shift (stage px) of the projection centre, so the model sits in the area left free by the panels. */
+  private viewShift = 104; private viewShiftTarget = 104;
   private precinctGroup = new THREE.Group();
   private tween: { from: View; to: View; t0: number; dur: number } | null = null;
 
@@ -119,7 +121,7 @@ export class World {
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(28, STAGE_W / STAGE_H, 20, 9000);
-    this.camera.setViewOffset(STAGE_W, STAGE_H, -VIEW_SHIFT_X, 0, STAGE_W, STAGE_H);
+    this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     Object.assign(this.controls, { enableDamping: true, dampingFactor: 0.08, minPolarAngle: 0.12, maxPolarAngle: 1.3, minDistance: 220, maxDistance: 3000, screenSpacePanning: false, panSpeed: 0.6, rotateSpeed: 0.6, zoomSpeed: 0.8 });
     this.controls.addEventListener('start', () => { this.tween = null; this.onUserInteract?.(); });
@@ -205,7 +207,7 @@ export class World {
     this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 1.4))), this.mats.foot));
     this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 2.4))), this.mats.footBridge));
     this.scene.add(this.footGroup);
-    // footways coloured by shelter (chapter 08)
+    // footways coloured by shelter (chapter 09)
     this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainCovered));
     this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainOpen));
     this.scene.add(this.footRain);
@@ -245,7 +247,7 @@ export class World {
 
   static routeY(layer: number) { return layer >= 1 ? 5.5 + (layer - 1) * 3.5 : layer < 0 ? 0.7 : 1.2; }
 
-  // ---------- shade sampling (chapter 07) ----------
+  // ---------- shade sampling (chapter 08) ----------
   /** Show sample points as small squares (colours set by setShadeResult). */
   setShadeSamples(pts: THREE.Vector3[]) {
     if (this.dots) { this.scene.remove(this.dots); this.dots.dispose(); }
@@ -265,6 +267,8 @@ export class World {
     if (!this.dots) return; const lit = cssColor('--c-amber'), sh = cssColor('--c-shade');
     shaded.forEach((s, i) => this.dots!.setColorAt(i, s ? sh : lit)); if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
   }
+  /** Centre the projection on the free area between visible panels (stage px, + = right). */
+  setViewShift(px: number, instant = prefersReducedMotion()) { this.viewShiftTarget = px; if (instant) { this.viewShift = px; this.camera.setViewOffset(STAGE_W, STAGE_H, -px, 0, STAGE_W, STAGE_H); } }
   /** Restart the draw-on animation of the visible walking route. */
   replayWalk() { this.walkDrawStart = performance.now(); }
 
@@ -281,6 +285,7 @@ export class World {
     m.fade.color = cssColor('--scene-building-context'); m.xray.color = cssColor('--scene-building');
     m.pier.color = cssColor('--scene-building-context');
     m.src.osm.color = cssColor('--src-osm'); m.src.levels.color = cssColor('--src-levels'); m.src.estimate.color = cssColor('--src-estimate'); m.src.cited.color = cssColor('--src-cited');
+    m.zone.eco.color = cssColor('--z-eco'); m.zone.gardens.color = cssColor('--z-gardens'); m.zone.midvalley.color = cssColor('--z-midvalley');
     m.rainCovered.color = cssColor('--c-covered'); m.rainOpen.color = cssColor('--c-open'); m.walker.color = cssColor('--c-route'); m.dots.color = new THREE.Color(1, 1, 1);
     const edge = cssColor('--scene-edge');
     for (const e of [m.edgeKey, m.edgeContext, m.edgeFade, m.precinct, m.frame]) e.color = edge;
@@ -303,6 +308,7 @@ export class World {
     for (const b of this.bmeshes) {
       let mat: THREE.Material = b.key ? m.build : m.context; let em: THREE.LineBasicMaterial = b.key ? m.edgeKey : m.edgeContext;
       if (md.buildingStyle === 'source') { mat = m.src[b.data.heightSource]; em = m.edgeKey; }
+      else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] : m.context; em = b.data.zone ? m.edgeKey : m.edgeContext; }
       else if (md.buildingStyle === 'threshold') { const on = b.data.height >= md.threshold; mat = on ? m.build : m.fade; em = on ? m.edgeKey : m.edgeFade; }
       if (md.xray) { mat = m.xray; em = b.key ? m.edgeContext : m.edgeFade; }
       b.mesh.material = mat; b.edges.material = em;
@@ -325,7 +331,7 @@ export class World {
     if (md.routeSet === 'legs' && prev.routeSet !== 'legs') this.routeDrawStart = performance.now();
     if (md.routeSet === 'walks' && (prev.routeSet !== 'walks' || prev.walkFocus !== md.walkFocus)) this.walkDrawStart = performance.now();
     if (this.dots) this.dots.visible = md.shadeDots;
-    // light: fixed presentation sun, or the computed sun position (chapter 07)
+    // light: fixed presentation sun, or the computed sun position (chapter 08)
     if (md.sun) {
       const [x, y, z] = sunVector(md.sun.altitude, md.sun.azimuth); const up = md.sun.altitude > 0;
       this.sun.position.set(x * 1500, y * 1500, z * 1500); this.sun.target.position.set(0, 0, 0);
@@ -389,6 +395,8 @@ export class World {
   setPixelRatio(stageScale: number) { this.renderer.setPixelRatio(Math.min(2, Math.max(1, window.devicePixelRatio * stageScale))); this.renderer.setSize(STAGE_W, STAGE_H, false); }
 
   private frame(now: number) {
+    if (Math.abs(this.viewShift - this.viewShiftTarget) > 0.3) { this.viewShift += (this.viewShiftTarget - this.viewShift) * 0.12; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
+    else if (this.viewShift !== this.viewShiftTarget) { this.viewShift = this.viewShiftTarget; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
     this.stepTween(now);
     if (!this.tween) this.controls.update();
     // route draw-on
