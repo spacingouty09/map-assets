@@ -103,8 +103,8 @@ export class World {
   };
   private railGroups: Record<'lrt' | 'ktm' | 'erl', THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group() };
   private footGroup = new THREE.Group();
-  private routeMeshes: THREE.Mesh[] = []; // legs (chapter 07)
-  private walkMeshes = new Map<string, THREE.Mesh>(); // walking routes (chapter 08)
+  private routeMeshes: THREE.Mesh[] = []; // legs (chapter 05)
+  private walkMeshes = new Map<string, THREE.Mesh>(); // walking routes (chapter 06)
   private rainGroups = new Map<string, THREE.Group>(); // per route: covered / open-air ribbons
   private footRain = new THREE.Group();
   private walker = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 3, 24), this.mats.walker);
@@ -254,7 +254,7 @@ export class World {
     this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 1.4))), this.mats.foot));
     this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 2.4))), this.mats.footBridge));
     this.scene.add(this.footGroup);
-    // footways coloured by shelter (chapter 10)
+    // footways coloured by shelter (chapter 08)
     this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainCovered));
     this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainOpen));
     this.scene.add(this.footRain);
@@ -284,8 +284,8 @@ export class World {
     }
     this.walker.renderOrder = 12; this.scene.add(this.walker);
 
-    // precinct outlines (KL Eco City, Mid Valley City)
-    for (const p of areas.precincts.filter((p) => p.name === 'KL Eco City' || p.name === 'Mid Valley City')) {
+    // precinct outline (KL Eco City; the Mid Valley City polygon is not drawn: the Mid Valley precinct is the Megamall itself)
+    for (const p of areas.precincts.filter((p) => p.name === 'KL Eco City')) {
       const l = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(p.ring.map(([x, n]) => v3(x, n, 0.5))), this.mats.precinct);
       l.computeLineDistances(); this.precinctGroup.add(l);
     }
@@ -294,7 +294,7 @@ export class World {
 
   static routeY(layer: number) { return layer >= 1 ? 5.5 + (layer - 1) * 3.5 : layer < 0 ? 0.7 : 1.2; }
 
-  // ---------- shade sampling (chapter 09) ----------
+  // ---------- shade sampling (chapter 07) ----------
   /** Show sample points as small squares (colours set by setShadeResult). */
   setShadeSamples(pts: THREE.Vector3[]) {
     if (this.dots) { this.scene.remove(this.dots); this.dots.dispose(); }
@@ -383,7 +383,7 @@ export class World {
     if (md.routeSet === 'legs' && prev.routeSet !== 'legs') this.routeDrawStart = performance.now();
     if (md.routeSet === 'walks' && (prev.routeSet !== 'walks' || prev.walkFocus !== md.walkFocus)) this.walkDrawStart = performance.now();
     if (this.dots) this.dots.visible = md.shadeDots;
-    // light: fixed presentation sun, or the computed sun position (chapter 09)
+    // light: fixed presentation sun, or the computed sun position (chapter 07)
     if (md.sun) {
       const [x, y, z] = sunVector(md.sun.altitude, md.sun.azimuth); const up = md.sun.altitude > 0;
       this.sun.position.set(x * 1500, y * 1500, z * 1500); this.sun.target.position.set(0, 0, 0);

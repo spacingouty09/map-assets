@@ -1,4 +1,4 @@
-// Sample points for the sidewalk-shade analysis (chapter 09).
+// Sample points for the sidewalk-shade analysis (chapter 07).
 import * as THREE from 'three';
 import { lines, buildings, walks, routes, type XY, type Route } from './data';
 import { World } from './scene';

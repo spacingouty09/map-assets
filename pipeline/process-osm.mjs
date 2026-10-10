@@ -206,14 +206,14 @@ for (const src of HS.buildings) {
 // Rule: (1) The Gardens = buildings named in GARDENS_NAMES, or parts of an outline with one of those names
 //           (the Gardens towers and St. Giles residences are mapped as parts of the "The Gardens Mall" outline);
 //       (2) KL Eco City = remaining buildings whose centroid lies in the OSM landuse polygon "KL Eco City";
-//       (3) Mid Valley = remaining buildings whose centroid lies in the OSM landuse polygon "Mid Valley City"
-//           (Megamall and its surroundings; The Gardens is inside this polygon and is split out by rule 1);
+//       (3) Mid Valley Megamall = the OSM building "Mid Valley Megamall" (way/922804567, building=mall) and the
+//           building:parts mapped inside that outline (v16: no longer the whole "Mid Valley City" landuse polygon);
 //       everything else has no zone.
 const GARDENS_NAMES = new Set(['The Gardens Mall', 'The Gardens North Tower', 'The Gardens South Tower', 'St. Giles The Gardens Residences', 'The Gardens Hotel', 'The Gardens Residences']);
 const outlineName = new Map(outlines.map((o) => [o.id, o.tags.name]));
 for (const b of buildings) {
   const parentName = b.parent ? outlineName.get(b.parent) : null;
-  b.zone = GARDENS_NAMES.has(b.name) || GARDENS_NAMES.has(parentName) ? 'gardens' : b.precinct === 'KL Eco City' ? 'eco' : b.precinct === 'Mid Valley City' ? 'midvalley' : null;
+  b.zone = GARDENS_NAMES.has(b.name) || GARDENS_NAMES.has(parentName) ? 'gardens' : b.precinct === 'KL Eco City' ? 'eco' : b.name === 'Mid Valley Megamall' || parentName === 'Mid Valley Megamall' ? 'midvalley' : null;
 }
 // footprint per zone: union of block footprints rasterised on a 1 m grid (overlapping parts counted once)
 const zoneStats = {};
