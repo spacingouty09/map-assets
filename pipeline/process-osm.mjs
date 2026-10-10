@@ -1,0 +1,330 @@
+// Convert raw/overpass.json into compact local-metric JSON for the app (src/data/).
+// Local frame: x = metres east, y = metres north of CENTER (equirectangular, fine for 1 km).
+// Usage: node scripts/process-osm.mjs
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { CENTER, HALF_SIZE_M, BBOX } from './config.mjs';
+
+const raw = JSON.parse(readFileSync('raw/overpass.json', 'utf8'));
+const R = 6378137;
+const K = Math.PI / 180;
+const cosLat = Math.cos(CENTER.lat * K);
+const LEVEL_H = 3.5; // metres per storey for building:levels -> height
+const H = HALF_SIZE_M;
+const r1 = (v) => Math.round(v * 10) / 10;
+const proj = (p) => [(p.lon - CENTER.lon) * K * R * cosLat, (p.lat - CENTER.lat) * K * R];
+const key = (p) => `${p.lat},${p.lon}`;
+
+// ---------- geometry helpers ----------
+const area = (ring) => { let a = 0; for (let i = 0, n = ring.length; i < n; i++) { const [x1, y1] = ring[i], [x2, y2] = ring[(i + 1) % n]; a += x1 * y2 - x2 * y1; } return a / 2; };
+const centroid = (ring) => {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0, n = ring.length; i < n; i++) { const [x1, y1] = ring[i], [x2, y2] = ring[(i + 1) % n]; const f = x1 * y2 - x2 * y1; a += f; cx += (x1 + x2) * f; cy += (y1 + y2) * f; }
+  if (Math.abs(a) < 1e-9) { const s = ring.reduce((m, p) => [m[0] + p[0], m[1] + p[1]], [0, 0]); return [s[0] / ring.length, s[1] / ring.length]; }
+  return [cx / (3 * a), cy / (3 * a)];
+};
+const inside = (pt, ring) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) c = !c; } return c; };
+const len = (pts) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return s; };
+const dropClosing = (ring) => (ring.length > 1 && ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1] ? ring.slice(0, -1) : ring);
+const inBox = ([x, y], m = 0) => Math.abs(x) <= H + m && Math.abs(y) <= H + m;
+
+function clipPolygon(ring) { // Sutherland-Hodgman against the study square
+  let out = ring;
+  const edges = [[0, 1, -H], [0, -1, H], [1, 1, -H], [1, -1, H]]; // axis, sign, limit : keep sign*(v) >= sign*limit
+  for (const [ax, s, lim] of edges) {
+    const inp = out; out = [];
+    if (!inp.length) break;
+    const ok = (p) => s * p[ax] >= s * lim;
+    for (let i = 0; i < inp.length; i++) {
+      const cur = inp[i], prev = inp[(i + inp.length - 1) % inp.length];
+      const cross = () => { const t = (lim - prev[ax]) / (cur[ax] - prev[ax]); return [prev[0] + t * (cur[0] - prev[0]), prev[1] + t * (cur[1] - prev[1])]; };
+      if (ok(cur)) { if (!ok(prev)) out.push(cross()); out.push(cur); } else if (ok(prev)) out.push(cross());
+    }
+  }
+  return out;
+}
+function clipLine(pts) { // Liang-Barsky per segment, returns list of polylines
+  const res = []; let curr = null;
+  for (let i = 1; i < pts.length; i++) {
+    let [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    let t0 = 0, t1 = 1; const dx = x1 - x0, dy = y1 - y0; let ok = true;
+    for (const [p, q] of [[-dx, x0 + H], [dx, H - x0], [-dy, y0 + H], [dy, H - y0]]) {
+      if (p === 0) { if (q < 0) { ok = false; break; } } else { const t = q / p; if (p < 0) { if (t > t1) { ok = false; break; } if (t > t0) t0 = t; } else { if (t < t0) { ok = false; break; } if (t < t1) t1 = t; } }
+    }
+    if (!ok) { curr = null; continue; }
+    const a = [x0 + t0 * dx, y0 + t0 * dy], b = [x0 + t1 * dx, y0 + t1 * dy];
+    if (!curr || t0 > 0) { curr = [a]; res.push(curr); }
+    curr.push(b);
+    if (t1 < 1) curr = null;
+  }
+  return res.filter((l) => l.length > 1 && len(l) > 0.5);
+}
+const rnd = (pts) => pts.map(([x, y]) => [r1(x), r1(y)]);
+
+// Assemble multipolygon outer rings from relation member geometries.
+function relationRings(rel, role = 'outer') {
+  const segs = (rel.members || []).filter((m) => m.type === 'way' && (m.role || 'outer') === role && m.geometry).map((m) => m.geometry.map((g) => ({ lat: g.lat, lon: g.lon })));
+  const rings = []; const open = [];
+  for (const s of segs) (key(s[0]) === key(s.at(-1)) ? rings : open).push(s);
+  while (open.length) {
+    let ring = open.shift(); let grew = true;
+    while (key(ring[0]) !== key(ring.at(-1)) && grew) {
+      grew = false;
+      for (let i = 0; i < open.length; i++) {
+        const s = open[i]; const end = key(ring.at(-1));
+        if (key(s[0]) === end) ring = ring.concat(s.slice(1));
+        else if (key(s.at(-1)) === end) ring = ring.concat(s.slice(0, -1).reverse());
+        else continue;
+        open.splice(i, 1); grew = true; break;
+      }
+    }
+    rings.push(ring);
+  }
+  return rings;
+}
+const elRings = (el) => {
+  if (el.type === 'way' && el.geometry) return [el.geometry];
+  if (el.type === 'relation') return relationRings(el);
+  return [];
+};
+
+const els = raw.elements;
+const T = (e) => e.tags || {};
+const num = (v) => { if (v == null) return null; const m = String(v).replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; };
+
+// ---------- precincts (named landuse) ----------
+const precincts = [];
+for (const e of els) {
+  const t = T(e); if (!t.landuse || !t.name) continue;
+  for (const g of elRings(e)) {
+    const ring = dropClosing(g.map(proj)); if (ring.length < 3) continue;
+    precincts.push({ id: `${e.type}/${e.id}`, name: t.name, landuse: t.landuse, ring: rnd(ring) });
+  }
+}
+const ecoCity = precincts.find((p) => p.name === 'KL Eco City');
+const midValley = precincts.find((p) => p.name === 'Mid Valley City');
+
+// ---------- buildings ----------
+function heightInfo(t) {
+  const h = num(t.height); const lv = num(t['building:levels']);
+  let minH = num(t.min_height); const minLv = num(t['building:min_level']);
+  if (minH == null && minLv != null) minH = minLv * LEVEL_H;
+  if (h != null && h > 0) return { height: h, heightSource: 'osm', levels: lv, minHeight: minH || 0 };
+  if (lv != null && lv > 0) return { height: lv * LEVEL_H, heightSource: 'levels', levels: lv, minHeight: minH || 0 };
+  return null;
+}
+function estimate(t) { // modest defaults, flagged as estimates
+  const b = t.building || t['building:part'];
+  if (b === 'roof') return 5;
+  if (['industrial', 'warehouse', 'temple', 'mosque', 'commercial', 'retail', 'mall'].includes(b)) return 9;
+  return 7;
+}
+const outlines = []; const parts = [];
+for (const e of els) {
+  const t = T(e);
+  const isPart = t['building:part'] && !t.building;
+  if (!t.building && !isPart) continue;
+  for (const g of elRings(e)) {
+    const ring = dropClosing(g.map(proj)); if (ring.length < 3) continue;
+    const a = area(ring); const poly = a < 0 ? ring.slice().reverse() : ring; // CCW
+    const item = { id: `${e.type}/${e.id}`, tags: t, ring: poly, area: Math.abs(a), c: centroid(poly) };
+    (isPart ? parts : outlines).push(item);
+  }
+}
+// attach parts to outlines
+for (const p of parts) p.parent = outlines.find((o) => inside(p.c, o.ring)) || null;
+for (const o of outlines) { o.parts = parts.filter((p) => p.parent === o); o.partArea = o.parts.reduce((s, p) => s + p.area, 0); }
+
+const buildings = [];
+const pushB = (item, info, extra = {}) => {
+  if (!inBox(item.c)) return;
+  const t = item.tags;
+  buildings.push({
+    id: item.id,
+    name: t.name || null,
+    type: t.building || t['building:part'],
+    part: !!extra.part,
+    parent: extra.parentId || null,
+    height: r1(info.height), minHeight: r1(info.minHeight || 0), levels: info.levels ?? null,
+    heightSource: info.heightSource, heightNote: extra.note || undefined,
+    precinct: ecoCity && inside(item.c, ecoCity.ring) ? 'KL Eco City' : midValley && inside(item.c, midValley.ring) ? 'Mid Valley City' : null,
+    station: t.railway === 'station' || t.public_transport === 'station' ? (t.ref || t.name) : null,
+    area: Math.round(item.area),
+    c: [r1(item.c[0]), r1(item.c[1])],
+    ring: rnd(item.ring),
+  });
+};
+let skippedOutlines = 0;
+for (const o of outlines) {
+  const own = heightInfo(o.tags);
+  const useParts = o.parts.length && o.partArea >= 0.5 * o.area;
+  if (useParts) {
+    skippedOutlines++;
+    for (const p of o.parts) {
+      const pi = heightInfo(p.tags);
+      if (pi) pushB(p, pi, { part: true, parentId: o.id });
+      else if (own) pushB(p, { ...own, heightSource: 'estimate', minHeight: num(p.tags.min_height) || 0 }, { part: true, parentId: o.id, note: `estimate: inherited from parent outline (${own.heightSource})` });
+      else pushB(p, { height: estimate(p.tags), heightSource: 'estimate', minHeight: 0, levels: null }, { part: true, parentId: o.id });
+    }
+  } else {
+    pushB(o, own || { height: estimate(o.tags), heightSource: 'estimate', minHeight: 0, levels: null });
+  }
+}
+// orphan parts (no enclosing outline)
+for (const p of parts.filter((p) => !p.parent)) {
+  const pi = heightInfo(p.tags) || { height: estimate(p.tags), heightSource: 'estimate', minHeight: 0, levels: null };
+  pushB(p, pi, { part: true });
+}
+
+// named outlines (kept even when rendered via parts) for labels/anchors
+const outlineIndex = outlines.filter((o) => o.tags.name && inBox(o.c)).map((o) => {
+  const own = heightInfo(o.tags);
+  const ph = o.parts.map((p) => buildings.find((b) => b.id === p.id)).filter(Boolean);
+  const maxB = ph.length ? ph.reduce((m, b) => (b.height > m.height ? b : m)) : null;
+  return { id: o.id, name: o.tags.name, type: o.tags.building, c: [r1(o.c[0]), r1(o.c[1])], area: Math.round(o.area), renderedAsParts: !!(o.parts.length && o.partArea >= 0.5 * o.area), ownHeight: own ? r1(own.height) : null, ownHeightSource: own ? own.heightSource : 'none', levels: own?.levels ?? null, tallestPart: maxB ? { id: maxB.id, name: maxB.name, height: maxB.height, heightSource: maxB.heightSource, levels: maxB.levels } : null, ring: rnd(o.ring) };
+});
+
+// ---------- lines ----------
+const ROAD_W = { motorway: 14, trunk: 14, primary: 12, secondary: 10, tertiary: 8, motorway_link: 7, trunk_link: 7, primary_link: 7, secondary_link: 6, tertiary_link: 6, residential: 6, unclassified: 6, service: 4 };
+const PED = new Set(['footway', 'pedestrian', 'steps', 'path', 'corridor']);
+const roads = [], rails = [], footways = [], waterLines = [], waterAreas = [], green = [];
+const railLine = (t) => (/kelana jaya/i.test(t.name || '') ? 'lrt' : /ktm/i.test(t.name || '') ? 'ktm' : /erl|klia/i.test(t.name || '') ? 'erl' : 'other');
+const yes = (v) => v != null && v !== 'no';
+for (const e of els) {
+  const t = T(e);
+  if (e.type === 'way' && e.geometry && t.highway) {
+    const pts = e.geometry.map(proj);
+    for (const seg of clipLine(pts)) {
+      if (PED.has(t.highway)) footways.push({ id: e.id, kind: t.highway, bridge: yes(t.bridge), covered: yes(t.covered), indoor: yes(t.indoor), layer: num(t.layer) || 0, pts: rnd(seg) });
+      else if (ROAD_W[t.highway]) roads.push({ id: e.id, cls: t.highway, name: t.name || null, w: ROAD_W[t.highway], bridge: yes(t.bridge), tunnel: yes(t.tunnel), layer: num(t.layer) || 0, pts: rnd(seg) });
+    }
+  }
+  if (e.type === 'way' && e.geometry && ['light_rail', 'rail', 'subway', 'monorail'].includes(t.railway)) {
+    for (const seg of clipLine(e.geometry.map(proj))) rails.push({ id: e.id, line: railLine(t), name: t.name || null, elevated: yes(t.bridge) || (num(t.layer) || 0) > 0, tunnel: t.tunnel === 'yes', layer: num(t.layer) || 0, service: t.service || null, pts: rnd(seg) });
+  }
+  if (e.type === 'way' && e.geometry && t.waterway) {
+    for (const seg of clipLine(e.geometry.map(proj))) waterLines.push({ id: e.id, kind: t.waterway, name: t['name:en'] || t.name || null, width: num(t.width), pts: rnd(seg) });
+  }
+  const isWater = t.natural === 'water'; const isGreen = ['park', 'garden'].includes(t.leisure) || ['grass', 'recreation_ground'].includes(t.landuse);
+  if (isWater || isGreen) {
+    for (const g of elRings(e)) {
+      const ring = clipPolygon(dropClosing(g.map(proj))); if (ring.length < 3) continue;
+      (isWater ? waterAreas : green).push({ id: `${e.type}/${e.id}`, name: t.name || null, ring: rnd(ring) });
+    }
+  }
+}
+
+// ---------- stations ----------
+const stations = [];
+for (const e of els) {
+  const t = T(e); if (t.railway !== 'station') continue;
+  const ring = e.geometry ? dropClosing(e.geometry.map(proj)) : null;
+  const c = ring ? centroid(ring) : proj(e);
+  stations.push({ id: `${e.type}/${e.id}`, ref: t.ref || null, name: (t.name || '').replace(/^K[A-Z]\d+\s+/, ''), osmName: t.name, operator: t.operator || null, layer: num(t.layer) || 0, c: [r1(c[0]), r1(c[1])] });
+}
+
+// ---------- pedestrian routing on OSM topology ----------
+// Shared OSM nodes have identical coordinates, so coordinates act as node ids.
+const WALKABLE_ROADS = new Set(['primary', 'secondary', 'tertiary', 'primary_link', 'secondary_link', 'tertiary_link', 'residential', 'unclassified', 'service']);
+const nodes = new Map(); // key -> {p, edges:[]}
+const node = (g) => { const k = key(g); let n = nodes.get(k); if (!n) { n = { k, p: proj(g), edges: [], ped: false }; nodes.set(k, n); } return n; };
+for (const e of els) {
+  const t = T(e); if (e.type !== 'way' || !e.geometry || !t.highway) continue;
+  const ped = PED.has(t.highway); if (!ped && !WALKABLE_ROADS.has(t.highway)) continue;
+  if (t.foot === 'no' || t.access === 'no') continue;
+  const attrs = { way: e.id, kind: ped ? t.highway : 'road', road: ped ? null : t.highway, name: t.name || null, bridge: yes(t.bridge), covered: yes(t.covered), indoor: yes(t.indoor), layer: num(t.layer) || 0 };
+  const factor = ped ? 1 : 1.8; // prefer mapped pedestrian ways; roads assume walking along the roadside
+  for (let i = 1; i < e.geometry.length; i++) {
+    const a = node(e.geometry[i - 1]), b = node(e.geometry[i]);
+    if (ped) { a.ped = true; b.ped = true; }
+    const d = Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1]);
+    a.edges.push({ to: b, d, cost: d * factor, attrs }); b.edges.push({ to: a, d, cost: d * factor, attrs });
+  }
+}
+function nearest(pt, pedOnly = true) {
+  let best = null, bd = Infinity;
+  for (const n of nodes.values()) { if (pedOnly && !n.ped) continue; const d = Math.hypot(n.p[0] - pt[0], n.p[1] - pt[1]); if (d < bd) { bd = d; best = n; } }
+  return { n: best, d: bd };
+}
+function dijkstra(src, dst) {
+  const dist = new Map([[src, 0]]); const prev = new Map(); const done = new Set();
+  const heap = [[0, src]];
+  const push = (it) => { heap.push(it); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0]; const last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  while (heap.length) {
+    const [d, u] = pop(); if (done.has(u)) continue; done.add(u); if (u === dst) break;
+    for (const e of u.edges) { const nd = d + e.cost; if (nd < (dist.get(e.to) ?? Infinity)) { dist.set(e.to, nd); prev.set(e.to, { n: u, e }); push([nd, e.to]); } }
+  }
+  if (!done.has(dst)) return null;
+  const steps = []; let cur = dst;
+  while (cur !== src) { const { n, e } = prev.get(cur); steps.push({ a: n, b: cur, e }); cur = n; }
+  return steps.reverse();
+}
+const WALK_SPEED = 80; // m/min
+const byName = (n) => { const o = outlines.find((x) => x.tags.name === n) || parts.find((x) => x.tags.name === n); return o ? { c: o.c } : null; };
+const st = (ref) => stations.find((s) => s.ref === ref);
+const anchors = {
+  KJ17: { label: 'Abdullah Hukum LRT (KJ17)', pt: st('KJ17')?.c },
+  GARDENS: { label: 'The Gardens Mall', pt: byName('The Gardens Mall')?.c },
+  MEGAMALL: { label: 'Mid Valley Megamall', pt: byName('Mid Valley Megamall')?.c },
+  KB01: { label: 'Mid Valley KTM (KB01)', pt: st('KB01')?.c },
+};
+const legs = [['KJ17', 'GARDENS'], ['GARDENS', 'MEGAMALL'], ['MEGAMALL', 'KB01']];
+const routes = [];
+for (const [from, to] of legs) {
+  const A = anchors[from], B = anchors[to];
+  if (!A.pt || !B.pt) { routes.push({ from, to, error: 'anchor missing' }); continue; }
+  const sa = nearest(A.pt), sb = nearest(B.pt);
+  const steps = dijkstra(sa.n, sb.n);
+  if (!steps) { routes.push({ from, to, fromLabel: A.label, toLabel: B.label, error: 'no connected path in OSM graph' }); continue; }
+  // merge consecutive edges with same attrs into segments
+  const segs = [];
+  for (const s of steps) {
+    const at = s.e.attrs; const cls = at.kind === 'road' ? 'road' : at.bridge ? (at.indoor || at.covered ? 'bridge-enclosed' : 'bridge') : at.indoor || at.kind === 'corridor' ? 'indoor' : at.kind === 'steps' ? 'steps' : at.covered ? 'covered' : 'footway';
+    const last = segs.at(-1);
+    if (last && last.cls === cls && last.layer === at.layer) { last.pts.push(s.b.p); last.length += s.e.d; last.ways.add(at.way); }
+    else segs.push({ cls, layer: at.layer, road: at.road, pts: [s.a.p, s.b.p], length: s.e.d, ways: new Set([at.way]) });
+  }
+  const total = segs.reduce((s, x) => s + x.length, 0);
+  const byCls = {}; for (const s of segs) byCls[s.cls] = r1((byCls[s.cls] || 0) + s.length);
+  const inPrecinct = (prec) => prec ? Math.round(segs.reduce((acc, sg) => { let t = 0; for (let i = 1; i < sg.pts.length; i++) { const m = [(sg.pts[i][0] + sg.pts[i - 1][0]) / 2, (sg.pts[i][1] + sg.pts[i - 1][1]) / 2]; if (inside(m, prec.ring)) t += Math.hypot(sg.pts[i][0] - sg.pts[i - 1][0], sg.pts[i][1] - sg.pts[i - 1][1]); } return acc + t; }, 0)) : 0;
+  const overWater = Math.round(segs.reduce((acc, sg) => { let t = 0; for (let i = 1; i < sg.pts.length; i++) { const m = [(sg.pts[i][0] + sg.pts[i - 1][0]) / 2, (sg.pts[i][1] + sg.pts[i - 1][1]) / 2]; if (waterAreas.some((w) => inside(m, w.ring))) t += Math.hypot(sg.pts[i][0] - sg.pts[i - 1][0], sg.pts[i][1] - sg.pts[i - 1][1]); } return acc + t; }, 0));
+  routes.push({
+    overWaterM: overWater,
+    withinEcoCityM: inPrecinct(ecoCity), withinMidValleyCityM: inPrecinct(midValley),
+    from, to, fromLabel: A.label, toLabel: B.label,
+    snapFrom: r1(sa.d), snapTo: r1(sb.d),
+    length: Math.round(total), minutes: r1(total / WALK_SPEED), byClass: byCls,
+    straightLine: Math.round(Math.hypot(A.pt[0] - B.pt[0], A.pt[1] - B.pt[1])),
+    segments: segs.map((s) => ({ cls: s.cls, layer: s.layer, road: s.road, length: r1(s.length), osmWays: [...s.ways], pts: rnd(s.pts) })),
+  });
+}
+
+// ---------- summary stats (all derived from the pulled OSM data) ----------
+const count = (f) => buildings.filter(f).length;
+const railLen = (line) => Math.round(rails.filter((r) => r.line === line && !r.service).reduce((s, r) => s + len(r.pts), 0));
+const meta = {
+  source: 'OpenStreetMap via Overpass API', attribution: '© OpenStreetMap contributors (ODbL)',
+  fetchedAt: raw.fetched_at || null, center: CENTER, halfSizeM: H, bbox: BBOX,
+  levelHeightM: LEVEL_H, walkSpeedMPerMin: WALK_SPEED,
+  counts: {
+    rawElements: els.length, outlines: outlines.length, parts: parts.length, outlinesReplacedByParts: skippedOutlines,
+    buildings: buildings.length, heightOsm: count((b) => b.heightSource === 'osm'), heightLevels: count((b) => b.heightSource === 'levels'), heightEstimate: count((b) => b.heightSource === 'estimate'),
+    heightInherited: count((b) => !!b.heightNote), roads: roads.length, footways: footways.length,
+    footbridges: footways.filter((f) => f.bridge).length, indoorCorridors: footways.filter((f) => f.indoor || f.kind === 'corridor').length,
+    stations: stations.length,
+  },
+  railLengthsM: { lrt: railLen('lrt'), ktm: railLen('ktm'), erl: railLen('erl') },
+  footwayLengthM: Math.round(footways.reduce((s, f) => s + len(f.pts), 0)),
+  footbridgeLengthM: Math.round(footways.filter((f) => f.bridge).reduce((s, f) => s + len(f.pts), 0)),
+};
+mkdirSync('src/data', { recursive: true });
+const w = (f, d) => writeFileSync(`src/data/${f}`, JSON.stringify(d));
+w('meta.json', meta);
+w('buildings.json', buildings);
+w('lines.json', { roads, rails, footways, waterLines });
+w('areas.json', { waterAreas, green, precincts });
+w('stations.json', stations);
+w('named-outlines.json', outlineIndex);
+w('routes.json', { anchors, routes });
+console.log(JSON.stringify(meta, null, 1));
+for (const r of routes) console.log(r.from, '->', r.to, r.error || `${r.length} m, ${r.minutes} min, snap ${r.snapFrom}/${r.snapTo}`, JSON.stringify(r.byClass || {}));

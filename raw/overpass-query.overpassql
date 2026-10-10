@@ -1,0 +1,22 @@
+[out:json][timeout:90];
+(
+  way["building"](3.113508,101.671302,3.122492,101.680298);
+  relation["building"](3.113508,101.671302,3.122492,101.680298);
+  way["building:part"](3.113508,101.671302,3.122492,101.680298);
+  way["railway"~"^(light_rail|rail|subway|monorail|platform)$"](3.113508,101.671302,3.122492,101.680298);
+  node["railway"~"^(station|halt|stop)$"](3.113508,101.671302,3.122492,101.680298);
+  node["public_transport"="station"](3.113508,101.671302,3.122492,101.680298);
+  way["public_transport"="station"](3.113508,101.671302,3.122492,101.680298);
+  way["waterway"~"^(river|canal|stream)$"](3.113508,101.671302,3.122492,101.680298);
+  way["natural"="water"](3.113508,101.671302,3.122492,101.680298);
+  relation["natural"="water"](3.113508,101.671302,3.122492,101.680298);
+  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link|residential|unclassified|service)$"](3.113508,101.671302,3.122492,101.680298);
+  way["highway"~"^(footway|pedestrian|steps|path|corridor)$"](3.113508,101.671302,3.122492,101.680298);
+  way["man_made"="bridge"](3.113508,101.671302,3.122492,101.680298);
+  way["leisure"~"^(park|garden)$"](3.113508,101.671302,3.122492,101.680298);
+  way["landuse"~"^(grass|recreation_ground)$"](3.113508,101.671302,3.122492,101.680298);
+  way["landuse"]["name"](3.113508,101.671302,3.122492,101.680298);
+  relation["landuse"]["name"](3.113508,101.671302,3.122492,101.680298);
+  way["amenity"="parking"]["building"!~"."](3.113508,101.671302,3.122492,101.680298);
+);
+out body geom;
