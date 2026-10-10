@@ -35,5 +35,5 @@ All other blocks keep their OSM-derived height (`osm` height tag, `levels` × 3.
 
 ## Limitations
 
-- Mall heights (5 floors × 5.0 m = 25 m) are applied uniformly to every OSM building part of the mall outline that had no height/levels tag (10 parts for The Gardens Mall, 54 for Mid Valley Megamall). Some of those parts may be car-park decks, annexes or atria with different real heights.
+- Mall heights (5 floors × 5.0 m = 25 m) are applied uniformly to every unnamed OSM building part of the mall outline that had no height/levels tag. Named parts (e.g. Centrepoint North / South, Chili's) are left as estimates because no source covers them. Some of those parts may be car-park decks, annexes or atria with different real heights.
 - Name matching relies on the OSM `name` tag equalling the source building. The MidValley Tower of Light match conflicts with OSM levels and should be checked.

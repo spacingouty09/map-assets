@@ -2,15 +2,21 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildings, lines, areas, routes, meta, type XY, type Building, type HeightSource } from './data';
+import { buildings, lines, areas, routes, walks, meta, type XY, type Building, type HeightSource, type Route } from './data';
+import { sunVector } from './sun';
 
 export interface View { target: [number, number, number]; azimuth: number; polar: number; distance: number }
 export type RailState = 'highlight' | 'context' | 'hidden';
 export interface SceneMode {
   rails: { lrt: RailState; ktm: RailState; erl: RailState };
-  footways: 'hidden' | 'faint' | 'show';
-  routes: boolean;
-  routeFocus: number | null;
+  footways: 'hidden' | 'faint' | 'show' | 'rain';
+  routeSet: 'none' | 'legs' | 'walks';
+  routeFocus: number | null; // legs: index of the focused leg
+  walkFocus: string | null; // walks: id of the shown walk (null = all)
+  routeStyle: 'plain' | 'rain';
+  sun: { altitude: number; azimuth: number } | null; // null = fixed presentation light
+  shadeDots: boolean;
+  muteWater: boolean;
   xray: boolean;
   buildingStyle: 'default' | 'source' | 'threshold';
   threshold: number;
@@ -18,7 +24,7 @@ export interface SceneMode {
 }
 export const DEFAULT_MODE: SceneMode = {
   rails: { lrt: 'context', ktm: 'context', erl: 'context' },
-  footways: 'hidden', routes: false, routeFocus: null, xray: false,
+  footways: 'hidden', routeSet: 'none', routeFocus: null, walkFocus: null, routeStyle: 'plain', sun: null, shadeDots: false, muteWater: false, xray: false,
   buildingStyle: 'default', threshold: 60, precincts: false,
 };
 
@@ -77,7 +83,9 @@ export class World {
     build: new THREE.MeshLambertMaterial(), context: new THREE.MeshLambertMaterial(),
     fade: new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.35 }),
     xray: new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.16, depthWrite: false }),
-    src: { osm: new THREE.MeshLambertMaterial(), levels: new THREE.MeshLambertMaterial(), estimate: new THREE.MeshLambertMaterial() } as Record<HeightSource, THREE.MeshLambertMaterial>,
+    src: { osm: new THREE.MeshLambertMaterial(), levels: new THREE.MeshLambertMaterial(), estimate: new THREE.MeshLambertMaterial(), cited: new THREE.MeshLambertMaterial() } as Record<HeightSource, THREE.MeshLambertMaterial>,
+    rainCovered: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }), rainOpen: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
+    walker: new THREE.MeshBasicMaterial(), dots: new THREE.MeshBasicMaterial(),
     edgeKey: new THREE.LineBasicMaterial({ transparent: true }), edgeContext: new THREE.LineBasicMaterial({ transparent: true }),
     edgeFade: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.08 }),
     rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
@@ -90,8 +98,15 @@ export class World {
   };
   private railGroups: Record<'lrt' | 'ktm' | 'erl', THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group() };
   private footGroup = new THREE.Group();
-  private routeMeshes: THREE.Mesh[] = [];
+  private routeMeshes: THREE.Mesh[] = []; // legs (chapter 05)
+  private walkMeshes = new Map<string, THREE.Mesh>(); // walking routes (chapter 06)
+  private rainGroups = new Map<string, THREE.Group>(); // per route: covered / open-air ribbons
+  private footRain = new THREE.Group();
+  private walker = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 3, 24), this.mats.walker);
+  private dots: THREE.InstancedMesh | null = null;
   private routeDrawStart = 0;
+  private walkDrawStart = 0;
+  private hemiBase = 2.4; private sunBase = 1.5;
   private precinctGroup = new THREE.Group();
   private tween: { from: View; to: View; t0: number; dur: number } | null = null;
 
@@ -115,7 +130,8 @@ export class World {
     this.scene.add(this.hemi, this.sun, this.sun.target);
     this.sun.position.set(-420, 900, -380);
     this.sun.castShadow = true;
-    Object.assign(this.sun.shadow.camera, { left: -720, right: 720, top: 720, bottom: -720, near: 50, far: 2600 });
+    Object.assign(this.sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 50, far: 3200 });
+    this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.mapSize.set(4096, 4096);
     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.6; this.sun.shadow.radius = 3;
 
@@ -189,16 +205,35 @@ export class World {
     this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 1.4))), this.mats.foot));
     this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 2.4))), this.mats.footBridge));
     this.scene.add(this.footGroup);
+    // footways coloured by shelter (chapter 08)
+    this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainCovered));
+    this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainOpen));
+    this.scene.add(this.footRain);
 
-    // routes (one mesh per leg; vertices ordered along the path for draw-on)
-    const ry = (layer: number) => (layer >= 1 ? 5.5 + (layer - 1) * 3.5 : layer < 0 ? 0.7 : 1.2);
-    for (const r of routes) {
+    // routes: one mesh per route; vertices ordered along the path for draw-on
+    const pathOf = (r: Route) => {
       const pts: THREE.Vector3[] = [];
-      for (const s of r.segments) for (const [x, n] of s.pts) { const p = v3(x, n, ry(s.layer)); const last = pts[pts.length - 1]; if (!last || last.distanceToSquared(p) > 0.01) pts.push(p); }
-      const g = ribbon(pts, 5) || new THREE.BufferGeometry();
+      for (const s of r.segments) for (const [x, n] of s.pts) { const p = v3(x, n, World.routeY(s.layer)); const last = pts[pts.length - 1]; if (!last || last.distanceToSquared(p) > 0.01) pts.push(p); }
+      return pts;
+    };
+    const routeMesh = (r: Route, width: number) => {
+      const pts = pathOf(r); const g = ribbon(pts, width) || new THREE.BufferGeometry();
       const m = new THREE.Mesh(g, this.mats.route); m.renderOrder = 10; m.userData.count = g.index ? g.index.count : 0;
-      this.routeMeshes.push(m); this.scene.add(m);
+      const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+      m.userData.pts = pts; m.userData.cum = cum; m.userData.length = cum[cum.length - 1];
+      this.scene.add(m); return m;
+    };
+    for (const r of routes) this.routeMeshes.push(routeMesh(r, 5));
+    for (const r of [...routes, ...walks]) {
+      if (!this.walkMeshes.has(r.id) && walks.includes(r)) this.walkMeshes.set(r.id, routeMesh(r, 5.5));
+      const grp = new THREE.Group();
+      for (const [cov, mat] of [[true, this.mats.rainCovered], [false, this.mats.rainOpen]] as const) {
+        const m = new THREE.Mesh(merge(r.segments.filter((sg) => sg.sheltered === cov).map((sg) => ribbon(sg.pts.map(([x, n]) => v3(x, n, World.routeY(sg.layer) + 0.1)), 6))), mat);
+        m.renderOrder = 11; grp.add(m);
+      }
+      this.rainGroups.set(r.id, grp); this.scene.add(grp);
     }
+    this.walker.renderOrder = 12; this.scene.add(this.walker);
 
     // precinct outlines (KL Eco City, Mid Valley City)
     for (const p of areas.precincts.filter((p) => p.name === 'KL Eco City' || p.name === 'Mid Valley City')) {
@@ -207,6 +242,31 @@ export class World {
     }
     this.scene.add(this.precinctGroup);
   }
+
+  static routeY(layer: number) { return layer >= 1 ? 5.5 + (layer - 1) * 3.5 : layer < 0 ? 0.7 : 1.2; }
+
+  // ---------- shade sampling (chapter 07) ----------
+  /** Show sample points as small squares (colours set by setShadeResult). */
+  setShadeSamples(pts: THREE.Vector3[]) {
+    if (this.dots) { this.scene.remove(this.dots); this.dots.dispose(); }
+    const g = new THREE.PlaneGeometry(2.6, 2.6); g.rotateX(-Math.PI / 2);
+    this.dots = new THREE.InstancedMesh(g, this.mats.dots, Math.max(1, pts.length)); const m = new THREE.Matrix4();
+    pts.forEach((p, i) => { m.makeTranslation(p.x, p.y - 1.3, p.z); this.dots!.setMatrixAt(i, m); this.dots!.setColorAt(i, new THREE.Color(1, 1, 1)); });
+    this.dots.count = pts.length; this.dots.renderOrder = 9; this.dots.visible = this.mode.shadeDots; this.scene.add(this.dots);
+  }
+  /** For each sample, true when a building blocks the ray towards the sun. */
+  shadeTest(pts: THREE.Vector3[], altitude: number, azimuth: number): boolean[] {
+    if (altitude <= 0) return pts.map(() => true);
+    const dir = new THREE.Vector3(...sunVector(altitude, azimuth)); const rc = new THREE.Raycaster(); rc.far = 2500;
+    const meshes = this.bmeshes.map((b) => b.mesh);
+    return pts.map((p) => { rc.set(p, dir); return rc.intersectObjects(meshes, false).length > 0; });
+  }
+  setShadeResult(shaded: boolean[]) {
+    if (!this.dots) return; const lit = cssColor('--c-amber'), sh = cssColor('--c-shade');
+    shaded.forEach((s, i) => this.dots!.setColorAt(i, s ? sh : lit)); if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
+  }
+  /** Restart the draw-on animation of the visible walking route. */
+  replayWalk() { this.walkDrawStart = performance.now(); }
 
   // ---------- theme ----------
   applyTheme() {
@@ -220,7 +280,8 @@ export class World {
     m.build.color = cssColor('--scene-building'); m.context.color = cssColor('--scene-building-context');
     m.fade.color = cssColor('--scene-building-context'); m.xray.color = cssColor('--scene-building');
     m.pier.color = cssColor('--scene-building-context');
-    m.src.osm.color = cssColor('--src-osm'); m.src.levels.color = cssColor('--src-levels'); m.src.estimate.color = cssColor('--src-estimate');
+    m.src.osm.color = cssColor('--src-osm'); m.src.levels.color = cssColor('--src-levels'); m.src.estimate.color = cssColor('--src-estimate'); m.src.cited.color = cssColor('--src-cited');
+    m.rainCovered.color = cssColor('--c-covered'); m.rainOpen.color = cssColor('--c-open'); m.walker.color = cssColor('--c-route'); m.dots.color = new THREE.Color(1, 1, 1);
     const edge = cssColor('--scene-edge');
     for (const e of [m.edgeKey, m.edgeContext, m.edgeFade, m.precinct, m.frame]) e.color = edge;
     m.edgeKey.opacity = parseFloat(cssVar('--scene-edge-opacity')) || 0.5;
@@ -229,14 +290,14 @@ export class World {
     m.foot.color = cssColor('--grey-2'); m.footBridge.color = cssColor('--ink');
     m.route.color = cssColor('--c-route'); m.routeDim.color = cssColor('--c-route');
     const dark = document.documentElement.dataset.theme === 'dark';
-    this.hemi.intensity = dark ? 1.6 : 2.4; this.hemi.groundColor = new THREE.Color(dark ? 0x202020 : 0xbdbdb8);
-    this.sun.intensity = dark ? 1.1 : 1.5;
+    this.hemiBase = dark ? 1.6 : 2.4; this.hemi.groundColor = new THREE.Color(dark ? 0x202020 : 0xbdbdb8);
+    this.sunBase = dark ? 1.1 : 1.5;
     this.setMode({});
   }
 
   // ---------- modes ----------
   setMode(patch: Partial<SceneMode>) {
-    const prevRoutes = this.mode.routes;
+    const prev = this.mode;
     this.mode = { ...this.mode, ...patch, rails: { ...this.mode.rails, ...(patch.rails || {}) } };
     const md = this.mode; const m = this.mats;
     for (const b of this.bmeshes) {
@@ -252,10 +313,30 @@ export class World {
       grp.visible = st !== 'hidden';
       m.rail[line].opacity = st === 'highlight' ? 1 : 0.35;
     }
-    this.footGroup.visible = md.footways !== 'hidden';
+    this.footGroup.visible = md.footways === 'faint' || md.footways === 'show';
+    this.footRain.visible = md.footways === 'rain';
+    m.rainCovered.opacity = 0.95; m.rainOpen.opacity = 0.9;
     m.foot.opacity = md.footways === 'show' ? 0.85 : 0.35; m.footBridge.opacity = md.footways === 'show' ? 0.95 : 0.4;
-    this.routeMeshes.forEach((r, i) => { r.visible = md.routes; r.material = md.routeFocus == null || md.routeFocus === i ? m.route : m.routeDim; });
-    if (md.routes && !prevRoutes) this.routeDrawStart = performance.now();
+    const plain = md.routeStyle === 'plain';
+    this.routeMeshes.forEach((r, i) => { r.visible = plain && md.routeSet === 'legs'; r.material = md.routeFocus == null || md.routeFocus === i ? m.route : m.routeDim; });
+    for (const [id, r] of this.walkMeshes) r.visible = plain && md.routeSet === 'walks' && (md.walkFocus == null || md.walkFocus === id);
+    for (const [id, g] of this.rainGroups) g.visible = !plain && md.routeSet !== 'none' && (md.routeSet === 'walks' ? walks.some((w) => w.id === id) && (md.walkFocus == null || md.walkFocus === id) : routes.some((w) => w.id === id));
+    this.walker.visible = plain && md.routeSet === 'walks' && md.walkFocus != null;
+    if (md.routeSet === 'legs' && prev.routeSet !== 'legs') this.routeDrawStart = performance.now();
+    if (md.routeSet === 'walks' && (prev.routeSet !== 'walks' || prev.walkFocus !== md.walkFocus)) this.walkDrawStart = performance.now();
+    if (this.dots) this.dots.visible = md.shadeDots;
+    // light: fixed presentation sun, or the computed sun position (chapter 07)
+    if (md.sun) {
+      const [x, y, z] = sunVector(md.sun.altitude, md.sun.azimuth); const up = md.sun.altitude > 0;
+      this.sun.position.set(x * 1500, y * 1500, z * 1500); this.sun.target.position.set(0, 0, 0);
+      this.sun.intensity = up ? this.sunBase * (0.55 + 0.6 * Math.sin((md.sun.altitude * Math.PI) / 180)) : 0;
+      this.hemi.intensity = this.hemiBase * (up ? 0.62 : 0.45);
+      this.sun.castShadow = up;
+    } else {
+      this.sun.position.set(-420, 900, -380); this.sun.target.position.set(0, 0, 0);
+      this.sun.intensity = this.sunBase; this.hemi.intensity = this.hemiBase; this.sun.castShadow = true;
+    }
+    m.water.color = cssColor(md.muteWater ? '--scene-water-muted' : '--c-water');
     this.precinctGroup.visible = md.precincts;
   }
 
@@ -315,8 +396,19 @@ export class World {
     const total = this.routeMeshes.length;
     this.routeMeshes.forEach((r, i) => {
       const local = THREE.MathUtils.clamp(k * total - i, 0, 1); const count = r.userData.count as number;
-      r.geometry.setDrawRange(0, Math.floor((count * local) / 6) * 6);
+        r.geometry.setDrawRange(0, Math.floor((count * local) / 6) * 6);
     });
+    for (const r of this.walkMeshes.values()) {
+      if (!r.visible) continue;
+      const L = r.userData.length as number; const dur = Math.max(1400, (L / 650) * 3600);
+      const kw = prefersReducedMotion() ? 1 : Math.min(1, (now - this.walkDrawStart) / dur);
+      const count = r.userData.count as number; r.geometry.setDrawRange(0, Math.floor((count * kw) / 6) * 6);
+      // walker marker at the head of the line
+      const pts = r.userData.pts as THREE.Vector3[]; const cum = r.userData.cum as number[]; const d = kw * L;
+      let i = cum.findIndex((c) => c >= d); if (i <= 0) i = 1;
+      const t = (d - cum[i - 1]) / Math.max(1e-6, cum[i] - cum[i - 1]);
+      if (pts.length > 1) this.walker.position.lerpVectors(pts[i - 1], pts[i], THREE.MathUtils.clamp(t, 0, 1)).add(new THREE.Vector3(0, 1.6, 0));
+    }
     this.renderer.render(this.scene, this.camera);
     for (const f of this.onFrame) f();
   }

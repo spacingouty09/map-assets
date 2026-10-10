@@ -9,28 +9,31 @@ import routesJ from './data/routes.json';
 import namedJ from './data/named-outlines.json';
 
 export type XY = [number, number];
-export type HeightSource = 'osm' | 'levels' | 'estimate';
+export type HeightSource = 'osm' | 'levels' | 'estimate' | 'cited';
+export interface HeightRef { value: number; unit: 'm' | 'floors'; floors: number | null; storeyHeight: number | null; publisher: string; url: string; fetched: string; note?: string; ctbuhEstimated: boolean }
 
 export interface Building {
   id: string; name: string | null; type: string; part: boolean; parent: string | null;
-  height: number; minHeight: number; levels: number | null; heightSource: HeightSource; heightNote?: string;
+  height: number; minHeight: number; levels: number | null; heightSource: HeightSource; heightNote?: string; heightRef?: HeightRef;
   precinct: string | null; station: string | null; area: number; c: XY; ring: XY[];
 }
 export interface Road { id: number; cls: string; name: string | null; w: number; bridge: boolean; tunnel: boolean; layer: number; pts: XY[] }
 export interface Rail { id: number; line: 'lrt' | 'ktm' | 'erl' | 'other'; name: string | null; elevated: boolean; tunnel: boolean; layer: number; service: string | null; pts: XY[] }
-export interface Footway { id: number; kind: string; bridge: boolean; covered: boolean; indoor: boolean; layer: number; pts: XY[] }
+export type Shelter = 'indoor' | 'covered-tag' | 'in-building' | 'open';
+export interface Footway { id: number; kind: string; bridge: boolean; covered: boolean; indoor: boolean; layer: number; sheltered: boolean; shelter: Shelter; pts: XY[] }
 export interface WaterLine { id: number; kind: string; name: string | null; width: number | null; pts: XY[] }
 export interface Area { id: string; name: string | null; ring: XY[]; landuse?: string }
 export interface Station { id: string; ref: string | null; name: string; osmName: string; operator: string | null; layer: number; c: XY }
-export interface RouteSegment { cls: string; layer: number; road: string | null; length: number; osmWays: number[]; pts: XY[] }
+export type Share = 'bridge' | 'indoor' | 'covered' | 'open';
+export interface RouteSegment { cls: string; layer: number; road: string | null; sheltered: boolean; shelter: Shelter; share: Share; length: number; osmWays: number[]; pts: XY[] }
 export interface Route {
-  from: string; to: string; fromLabel: string; toLabel: string; snapFrom: number; snapTo: number;
-  length: number; minutes: number; byClass: Record<string, number>; straightLine: number;
+  id: string; from: string; to: string; fromLabel: string; toLabel: string; snapFrom: number; snapTo: number;
+  length: number; minutes: number; byClass: Record<string, number>; byShare: Partial<Record<Share, number>>; shelteredM: number; shelteredPct: number; straightLine: number;
   withinEcoCityM: number; withinMidValleyCityM: number; overWaterM: number; segments: RouteSegment[]; error?: string;
 }
 export interface NamedOutline {
   id: string; name: string; type: string; c: XY; area: number; renderedAsParts: boolean;
-  ownHeight: number | null; ownHeightSource: HeightSource | 'none'; levels: number | null;
+  ownHeight: number | null; ownHeightSource: HeightSource | 'none'; heightRef?: HeightRef; levels: number | null;
   tallestPart: { id: string; name: string | null; height: number; heightSource: HeightSource; levels: number | null } | null;
   ring: XY[];
 }
@@ -39,7 +42,10 @@ export const meta = metaJ;
 export const buildings = buildingsJ as unknown as Building[];
 export const lines = linesJ as unknown as { roads: Road[]; rails: Rail[]; footways: Footway[]; waterLines: WaterLine[] };
 export const areas = areasJ as unknown as { waterAreas: Area[]; green: Area[]; precincts: Area[] };
-export const routes = (routesJ as unknown as { routes: Route[] }).routes.filter((r) => !r.error);
+const RJ = routesJ as unknown as { routes: Route[]; walks: Route[]; anchors: Record<string, { label: string; pt: XY }> };
+export const routes = RJ.routes.filter((r) => !r.error);
+export const walks = RJ.walks.filter((r) => !r.error);
+export const anchors = RJ.anchors;
 export const namedOutlines = namedJ as unknown as NamedOutline[];
 export const stations = (stationsJ as unknown as Station[]).map((s) => ({
   ...s,
@@ -64,6 +70,11 @@ export const station = (ref: string) => stations.find((s) => s.ref === ref) || n
 const dist = (a: XY, b: XY) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const bySource = (s: HeightSource) => buildings.filter((b) => b.heightSource === s).length;
 const osmTallest = buildings.filter((b) => b.heightSource === 'osm').sort((a, b) => b.height - a.height)[0];
+const citedSorted = buildings.filter((b) => b.heightSource === 'cited' && b.name).sort((a, b) => b.height - a.height);
+const citedTallest = citedSorted.filter((b) => b.height === citedSorted[0]?.height);
+const lenOf = (pts: XY[]) => pts.reduce((s, p, i) => (i ? s + dist(p, pts[i - 1]) : 0), 0);
+const shelteredFootM = lines.footways.filter((f) => f.sheltered).reduce((s, f) => s + lenOf(f.pts), 0);
+const allFootM = lines.footways.reduce((s, f) => s + lenOf(f.pts), 0);
 const totalRoute = routes.reduce((s, r) => s + r.length, 0);
 const classTotals: Record<string, number> = {};
 for (const r of routes) for (const [k, v] of Object.entries(r.byClass)) classTotals[k] = (classTotals[k] || 0) + v;
@@ -72,8 +83,10 @@ const kj17 = station('KJ17'); const kb01 = station('KB01');
 
 export const stats = {
   buildingCount: buildings.length,
-  heightOsm: bySource('osm'), heightLevels: bySource('levels'), heightEstimate: bySource('estimate'),
-  osmTallest,
+  heightOsm: bySource('osm'), heightLevels: bySource('levels'), heightEstimate: bySource('estimate'), heightCited: bySource('cited'),
+  citedNamed: new Set([...citedSorted.map((b) => b.name), ...namedOutlines.filter((o) => o.ownHeightSource === 'cited').map((o) => o.name)]).size,
+  osmTallest, citedTallest,
+  footwayM: Math.round(allFootM), shelteredFootM: Math.round(shelteredFootM), shelteredFootPct: allFootM ? Math.round((shelteredFootM / allFootM) * 100) : 0,
   routeTotalM: totalRoute,
   routeMinutes: totalRoute / meta.walkSpeedMPerMin,
   routeBridgeM: Math.round(bridgeM),
@@ -87,5 +100,4 @@ export const stats = {
 };
 
 export const fmt = (n: number, d = 0) => n.toLocaleString('en-GB', { maximumFractionDigits: d, minimumFractionDigits: d });
-export const heightLabel = (h: number, src: HeightSource | 'none', levels: number | null) =>
-  src === 'osm' ? `${fmt(h)} m · OSM height` : src === 'levels' ? `≈${fmt(h)} m · ${levels} lv × 3.5` : src === 'estimate' ? `~${fmt(h)} m · estimate` : '';
+

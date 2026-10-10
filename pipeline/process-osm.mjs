@@ -192,7 +192,7 @@ for (const src of HS.buildings) {
     const o = outlines.find((x) => x.tags.name === src.osmName);
     if (o) {
       outlineCited.set(o.id, { h: r1(h), ref });
-      for (const b of buildings.filter((x) => x.parent === o.id && x.heightSource === 'estimate')) {
+      for (const b of buildings.filter((x) => x.parent === o.id && x.heightSource === 'estimate' && (!x.name || x.name === src.osmName))) { // named parts (e.g. Centrepoint North/South) are separate buildings: not touched
         applied.push({ id: b.id, from: `${b.height} m (estimate)` });
         Object.assign(b, { height: r1(h), heightSource: 'cited', heightRef: { ...ref, note: `${ref.note} (untagged part of ${src.osmName})` } }); delete b.heightNote;
       }

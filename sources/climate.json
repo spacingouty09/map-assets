@@ -1,0 +1,16 @@
+{
+  "station": "Sultan Abdul Aziz Shah Airport (Subang)",
+  "period": "1991–2020",
+  "publisher": "Wikipedia – Template:Kuala Lumpur weatherbox (source 1: WMO climate normals)",
+  "url": "https://en.wikipedia.org/wiki/Template:Kuala_Lumpur_weatherbox",
+  "monsoonPublisher": "Wikipedia – Kuala Lumpur (Climate section)",
+  "monsoonUrl": "https://en.wikipedia.org/wiki/Kuala_Lumpur#Climate",
+  "monsoonQuote": "abundant rainfall, especially during the northeast monsoon season from October to March",
+  "monsoonMonths": [10, 11, 12, 1, 2, 3],
+  "fetched": "2026-10-10",
+  "precipitationMm": [226.7, 192.8, 270.4, 301.5, 229.9, 145.8, 165.2, 174.3, 220.3, 283.8, 355.8, 280.6],
+  "yearPrecipitationMm": 2847.1,
+  "precipitationDays": [13.6, 11.9, 15.0, 16.8, 13.2, 9.6, 10.6, 10.9, 13.3, 16.3, 19.7, 16.3],
+  "yearPrecipitationDays": 167.2,
+  "rainDayThresholdMm": 1.0
+}
