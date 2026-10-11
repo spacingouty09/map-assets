@@ -30,7 +30,7 @@ export const DEFAULT_MODE: SceneMode = {
   buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false,
 };
 
-const STAGE_W = 1920, STAGE_H = 1080;
+const DESK_W = 1920, DESK_H = 1080; // desktop stage; mobile uses the real viewport size (setStageSize)
 const H = meta.halfSizeM;
 const v3 = (x: number, north: number, y = 0) => new THREE.Vector3(x, y, -north);
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -114,6 +114,8 @@ export class World {
   private hemiBase = 2.4; private sunBase = 1.5;
   /** Horizontal shift (stage px) of the projection centre, so the model sits in the area left free by the panels. */
   private viewShift = 104; private viewShiftTarget = 104;
+  private viewShiftY = 0; private viewShiftYTarget = 0;
+  private stageW = DESK_W; private stageH = DESK_H; private distScale = 1;
   private precinctGroup = new THREE.Group();
   private tween: { from: View; to: View; t0: number; dur: number } | null = null;
   /** LRT tracks (one chain per direction) and the animated trainsets on them. */
@@ -130,15 +132,15 @@ export class World {
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(STAGE_W, STAGE_H, false);
+    this.renderer.setSize(this.stageW, this.stageH, false);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.localClippingEnabled = true; // trains are clipped at the study-area frame
     container.appendChild(this.renderer.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(28, STAGE_W / STAGE_H, 20, 9000);
-    this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H);
+    this.camera = new THREE.PerspectiveCamera(28, this.stageW / this.stageH, 20, 9000);
+    this.applyViewOffset();
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     Object.assign(this.controls, { enableDamping: true, dampingFactor: 0.08, minPolarAngle: 0.12, maxPolarAngle: 1.3, minDistance: 220, maxDistance: 3000, screenSpacePanning: false, panSpeed: 0.6, rotateSpeed: 0.6, zoomSpeed: 0.8 });
     this.controls.addEventListener('start', () => { this.tween = null; this.turnHeld = true; this.onUserInteract?.(); });
@@ -315,7 +317,27 @@ export class World {
     shaded.forEach((s, i) => this.dots!.setColorAt(i, s ? sh : lit)); if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
   }
   /** Centre the projection on the free area between visible panels (stage px, + = right). */
-  setViewShift(px: number, instant = prefersReducedMotion()) { this.viewShiftTarget = px; if (instant) { this.viewShift = px; this.camera.setViewOffset(STAGE_W, STAGE_H, -px, 0, STAGE_W, STAGE_H); } }
+  setViewShift(px: number, instant = prefersReducedMotion(), py = 0) {
+    this.viewShiftTarget = px; this.viewShiftYTarget = py;
+    if (instant) { this.viewShift = px; this.viewShiftY = py; this.applyViewOffset(); }
+  }
+  private applyViewOffset() { this.camera.setViewOffset(this.stageW, this.stageH, -this.viewShift, -this.viewShiftY, this.stageW, this.stageH); }
+  /** Stage size in CSS px: 1920x1080 on desktop (the stage is scaled to fit), the real viewport on mobile. */
+  setStageSize(w: number, h: number) {
+    w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    if (w === this.stageW && h === this.stageH) return;
+    this.stageW = w; this.stageH = h; this.camera.aspect = w / h; this.renderer.setSize(w, h, false); this.applyViewOffset();
+  }
+  get stageSize() { return { w: this.stageW, h: this.stageH }; }
+  /** Mobile framing: every chapter preset (and any flyTo view) is pulled back by this factor so its subject fits a
+   *  narrow / portrait screen. 1 on desktop. */
+  setDistanceScale(k: number) {
+    if (Math.abs(k - this.distScale) < 1e-3) return;
+    const prev = this.distScale; this.distScale = k; this.controls.maxDistance = 3000 * Math.max(1, k);
+    if (!this.tween) { const v = this.currentView(); this.applyView({ ...v, distance: (v.distance * k) / prev }); }
+    else this.tween.to = { ...this.tween.to, distance: (this.tween.to.distance * k) / prev };
+  }
+  private scaled(v: View): View { return this.distScale === 1 ? v : { ...v, distance: v.distance * this.distScale }; }
   /** Restart the draw-on animation of the visible walking route. */
   replayWalk() { this.walkDrawStart = performance.now(); }
 
@@ -424,11 +446,12 @@ export class World {
   isFlying() { return this.tween != null; }
   /** Whether the camera is near a view: target within 8 m, bearing / tilt within ~2°, distance within 4 %. */
   isNear(v: View, ignoreBearing = false) {
-    const c = this.currentView();
+    v = this.scaled(v); const c = this.currentView();
     const dAz = ignoreBearing ? 0 : Math.abs(Math.atan2(Math.sin(c.azimuth - v.azimuth), Math.cos(c.azimuth - v.azimuth)));
     return Math.hypot(c.target[0] - v.target[0], c.target[1] - v.target[1], c.target[2] - v.target[2]) < 8 && dAz < 0.035 && Math.abs(c.polar - v.polar) < 0.035 && Math.abs(Math.log(c.distance / v.distance)) < 0.04;
   }
   flyTo(view: View, instant = prefersReducedMotion()) {
+    view = this.scaled(view);
     if (instant) { this.tween = null; this.applyView(view); return; }
     this.tween = { from: this.currentView(), to: view, t0: performance.now(), dur: 1900 };
   }
@@ -456,7 +479,7 @@ export class World {
   /** Project a world point to stage pixel coordinates. */
   project(p: THREE.Vector3) {
     const v = p.clone().project(this.camera);
-    return { x: (v.x * 0.5 + 0.5) * STAGE_W, y: (-v.y * 0.5 + 0.5) * STAGE_H, visible: v.z < 1 && v.z > -1 };
+    return { x: (v.x * 0.5 + 0.5) * this.stageW, y: (-v.y * 0.5 + 0.5) * this.stageH, visible: v.z < 1 && v.z > -1 };
   }
   /** Stage pixels per metre at the orbit target, measured across the screen. */
   pxPerMetre() {
@@ -469,7 +492,7 @@ export class World {
     const t = this.controls.target.clone(); const a = this.project(t), b = this.project(t.clone().add(new THREE.Vector3(0, 0, -100)));
     return Math.atan2(b.x - a.x, -(b.y - a.y));
   }
-  setPixelRatio(stageScale: number) { this.renderer.setPixelRatio(Math.min(2, Math.max(1, window.devicePixelRatio * stageScale))); this.renderer.setSize(STAGE_W, STAGE_H, false); }
+  setPixelRatio(stageScale: number) { this.renderer.setPixelRatio(Math.min(2, Math.max(1, window.devicePixelRatio * stageScale))); this.renderer.setSize(this.stageW, this.stageH, false); }
 
   private frame(now: number) {
     // trains: run on a clamped clock that only advances while the page is visible;
@@ -478,8 +501,12 @@ export class World {
     if (prefersReducedMotion()) this.trains.freeze(this.trains.reducedMotionClock());
     else if (!document.hidden) this.trains.step(dt);
     this.trains.update();
-    if (Math.abs(this.viewShift - this.viewShiftTarget) > 0.3) { this.viewShift += (this.viewShiftTarget - this.viewShift) * 0.12; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
-    else if (this.viewShift !== this.viewShiftTarget) { this.viewShift = this.viewShiftTarget; this.camera.setViewOffset(STAGE_W, STAGE_H, -this.viewShift, 0, STAGE_W, STAGE_H); }
+    if (this.viewShift !== this.viewShiftTarget || this.viewShiftY !== this.viewShiftYTarget) {
+      const near = Math.abs(this.viewShift - this.viewShiftTarget) <= 0.3 && Math.abs(this.viewShiftY - this.viewShiftYTarget) <= 0.3;
+      if (near) { this.viewShift = this.viewShiftTarget; this.viewShiftY = this.viewShiftYTarget; }
+      else { this.viewShift += (this.viewShiftTarget - this.viewShift) * 0.12; this.viewShiftY += (this.viewShiftYTarget - this.viewShiftY) * 0.12; }
+      this.applyViewOffset();
+    }
     this.stepTween(now);
     this.stepTurntable(now, dt);
     if (!this.tween) this.controls.update();
