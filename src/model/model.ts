@@ -23,11 +23,12 @@ export interface SceneMode {
   threshold: number;
   precincts: boolean;
   landmarks: boolean; // highlight the landmark mosques (chapter 01 Landmarks)
+  airport: boolean; // 02: ERL tracks in the KLIA Transit colour + the suspended Skypark Line as a dashed overlay on the Line 2 tracks
 }
 export const DEFAULT_MODE: SceneMode = {
   rails: { lrt: 'context', ktm: 'context', erl: 'context' },
   footways: 'hidden', routeSet: 'none', routeFocus: null, walkFocus: null, routeStyle: 'plain', sun: null, shadeDots: false, muteWater: false, xray: false,
-  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false,
+  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false, airport: false,
 };
 
 const DESK_W = 1920, DESK_H = 1080; // desktop stage; mobile uses the real viewport size (setStageSize)
@@ -124,6 +125,9 @@ export class World {
   /** KTM Komuter tracks (two per line, oriented for left-hand running), their line (1 / 2), and the trainsets on them. */
   ktmTracks: Track[] = []; ktmTrackLine: (1 | 2)[] = [];
   ktmTrains!: Trains;
+  /** 02: suspended KL Sentral–Terminal Skypark Line (10), a thin dashed ribbon offset beside the Line 2 track; no trains. */
+  private skypark: THREE.Mesh | null = null;
+  private erlColors = { base: new THREE.Color(), klia: new THREE.Color() };
   private trainsOn = true;
   private lastFrame = 0;
   // turntable (00 Overview): slow continuous orbit about the target at the preset pitch / distance. Paused while the
@@ -255,6 +259,27 @@ export class World {
       if (line === 'ktm') {
         const k1 = ktmRuns(1); if (k1.length) grp.add(new THREE.Mesh(merge(k1), this.mats.rail.ktm));
         const k2 = [...rs.filter((r) => isK2(r) && !chained.has(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), 2.6)), ...ktmRuns(2)]; if (k2.length) grp.add(new THREE.Mesh(merge(k2), this.mats.rail.ktm2));
+        // Skypark (Line 10) used the Line 2 tracks (OSM relations 9985660 / 8391024): dashes 10 m on / 6 m off, ~1 m wide, 3.5 m to the outer side
+        const k2i = this.ktmTrackLine.indexOf(2), k2j = this.ktmTrackLine.lastIndexOf(2);
+        if (k2i >= 0) {
+          const tr = this.ktmTracks[k2i], other = k2j !== k2i ? this.ktmTracks[k2j] : null;
+          const mid = (tr.inStart + tr.inEnd) >> 1; let side = 1;
+          if (other) {
+            let best = Infinity, bx = 0, bz = 0; for (let i = other.inStart; i <= other.inEnd; i++) { const d = (other.x[i] - tr.x[mid]) ** 2 + (other.z[i] - tr.z[mid]) ** 2; if (d < best) { best = d; bx = other.x[i]; bz = other.z[i]; } }
+            const dx = tr.x[mid + 1] - tr.x[mid - 1], dz = tr.z[mid + 1] - tr.z[mid - 1]; side = (-dz * (bx - tr.x[mid]) + dx * (bz - tr.z[mid])) > 0 ? -1 : 1;
+          }
+          const dashes: (THREE.BufferGeometry | null)[] = []; let run: THREE.Vector3[] = []; let dist = 0;
+          for (let i = tr.inStart; i <= tr.inEnd; i++) {
+            if (i > tr.inStart) dist += Math.hypot(tr.x[i] - tr.x[i - 1], tr.z[i] - tr.z[i - 1]);
+            const a = Math.max(tr.inStart, i - 1), b = Math.min(tr.inEnd, i + 1); const dx = tr.x[b] - tr.x[a], dz = tr.z[b] - tr.z[a], l = Math.hypot(dx, dz) || 1;
+            const on = !tr.hide[i] && dist % 16 < 10;
+            if (on) run.push(new THREE.Vector3(tr.x[i] + (side * -dz / l) * 3.5, tr.y[i] + 0.12, tr.z[i] + (side * dx / l) * 3.5));
+            else if (run.length) { if (run.length > 1) dashes.push(ribbon(run, 1.1)); run = []; }
+          }
+          if (run.length > 1) dashes.push(ribbon(run, 1.1));
+          const geo = dashes.filter((g): g is THREE.BufferGeometry => !!g);
+          if (geo.length) { const mat = (this.mats.rail.ktm2 as THREE.Material).clone() as THREE.MeshBasicMaterial; mat.color = cssColor("--c-skypark"); this.skypark = new THREE.Mesh(merge(geo), mat); this.skypark.visible = false; grp.add(this.skypark); }
+        }
       }
       // piers under elevated track every ~32 m
       const piers: THREE.Vector3[] = [];
@@ -401,7 +426,7 @@ export class World {
     for (const e of [m.edgeKey, m.edgeContext, m.edgeFade, m.precinct, m.frame]) e.color = edge;
     m.edgeKey.opacity = parseFloat(cssVar('--scene-edge-opacity')) || 0.5;
     m.edgeContext.opacity = parseFloat(cssVar('--scene-edge-context-opacity')) || 0.2;
-    m.rail.lrt.color = cssColor('--c-lrt'); m.rail.ktm.color = cssColor('--c-ktm1'); m.rail.ktm2.color = cssColor('--c-ktm2'); m.rail.erl.color = cssColor('--c-erl');
+    m.rail.lrt.color = cssColor('--c-lrt'); m.rail.ktm.color = cssColor('--c-ktm1'); m.rail.ktm2.color = cssColor('--c-ktm2'); m.rail.erl.color = cssColor('--c-erl'); this.erlColors.base.copy(cssColor('--c-erl')); this.erlColors.klia.copy(cssColor('--c-klia-transit')); if (this.mode) m.rail.erl.color.copy(this.mode.airport ? this.erlColors.klia : this.erlColors.base); if (this.skypark) (this.skypark.material as THREE.MeshBasicMaterial).color = cssColor('--c-skypark');
     m.foot.color = cssColor('--grey-2'); m.footBridge.color = cssColor('--ink');
     m.landmark.color = cssColor('--landmark'); m.podium.color = cssColor('--podium');
     this.trains.setColors(cssColor('--train-body'), cssColor('--train-window'), cssColor('--train-accent'), edge, (parseFloat(cssVar('--scene-edge-opacity')) || 0.5) * 0.85);
@@ -436,6 +461,8 @@ export class World {
       m.rail[line].opacity = st === 'highlight' ? 1 : 0.35;
       if (line === 'ktm') m.rail.ktm2.opacity = m.rail.ktm.opacity;
     }
+    m.rail.erl.color.copy(md.airport ? this.erlColors.klia : this.erlColors.base);
+    if (this.skypark) { this.skypark.visible = md.airport; (this.skypark.material as THREE.MeshBasicMaterial).opacity = m.rail.ktm.opacity; }
     this.footGroup.visible = md.footways === 'faint' || md.footways === 'show';
     this.footRain.visible = md.footways === 'rain';
     m.rainCovered.opacity = 0.95; m.rainOpen.opacity = 0.9;
