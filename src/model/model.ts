@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildings, lines, areas, routes, walks, meta, landmarks, station, type XY, type Building, type HeightSource, type Route, type Zone, type Rail } from './data';
-import { chainWays, buildTrack, Trains, type Track } from './trains';
+import { chainWays, chainWaysAnyDir, orientLeftHand, buildTrack, Trains, KTM_TRAIN, type Track } from './trains';
 import { sunVector } from './sun';
 
 export interface View { target: [number, number, number]; azimuth: number; polar: number; distance: number }
@@ -121,12 +121,19 @@ export class World {
   /** LRT tracks (one chain per direction) and the animated trainsets on them. */
   lrtTracks: Track[] = [];
   trains!: Trains;
+  /** KTM Komuter tracks (two per line, oriented for left-hand running), their line (1 / 2), and the trainsets on them. */
+  ktmTracks: Track[] = []; ktmTrackLine: (1 | 2)[] = [];
+  ktmTrains!: Trains;
   private trainsOn = true;
   private lastFrame = 0;
   // turntable (00 Overview): slow continuous orbit about the target at the preset pitch / distance. Paused while the
   // user drags / zooms (resumes TURN_RESUME_MS after they stop), during flights, while the tab is hidden, and never
   // runs under prefers-reduced-motion.
   static readonly TURN_PERIOD_S = 75; static readonly TURN_RESUME_MS = 3000;
+  /** Seconds for one full turn. The dev camera GUI writes this. */
+  turnPeriodS = World.TURN_PERIOD_S;
+  /** +1 orbits the camera clockwise from above; -1 is anti-clockwise (chapter 00 default). */
+  turnSign: 1 | -1 = -1;
   private turnOn = false; private turnHeld = false; private turnResumeAt = 0;
   private landmarkGroup = new THREE.Group(); // landmark blocks outside the study square (shown with mode.landmarks)
 
@@ -184,12 +191,33 @@ export class World {
     this.scene.add(new THREE.Mesh(roadG(false, 0.06), this.mats.road));
     this.scene.add(new THREE.Mesh(roadG(true, 0.08), this.mats.roadMajor));
 
+    // KTM: per Komuter line, the OSM main-track ways chained into one continuous track per direction (left-hand
+    // running), at the drawn deck height with 4 % approach ramps to the bridges (schematic); tunnel stretches carry trains but are not drawn.
+    const ktmDeck = (r: Rail) => (r.elevated ? 6 + Math.max(0, r.layer - 1) * 3 : 0.35);
+    const ktmChained = new Set<Rail>();
+    for (const line of [1, 2] as const) {
+      const st = station(line === 1 ? 'KB01' : 'KD01');
+      const chains = chainWaysAnyDir(lines.rails.filter((r) => r.line === 'ktm' && r.route === line));
+      for (const c of chains) for (const w of c.src) ktmChained.add(w);
+      for (const ch of orientLeftHand(chains.map((c) => c.chain))) { this.ktmTracks.push(buildTrack(ch, ktmDeck, st ? st.c : null, { smoothY: 8, maxGrade: 0.04, hidden: (r) => r.tunnel })); this.ktmTrackLine.push(line); }
+    }
+    // Station structures over the at-grade KTM tracks would hide the trains standing at the platforms: OSM
+    // building=roof (an open-sided canopy) is drawn as a roof slab, and any other block over the track is drawn
+    // from a 5 m clearance up (schematic, like the deck heights). Heights shown in the UI are unchanged.
+    const inRing = (px: number, pn: number, ring: XY[]) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > pn) !== (yj > pn) && px < ((xj - xi) * (pn - yi)) / (yj - yi) + xi) c = !c; } return c; };
+    const coversKtm = (b: Building) => {
+      const xs = b.ring.map((p) => p[0]), ns = b.ring.map((p) => p[1]); const x0 = Math.min(...xs), x1 = Math.max(...xs), n0 = Math.min(...ns), n1 = Math.max(...ns);
+      return this.ktmTracks.some((t) => { for (let i = t.inStart; i <= t.inEnd; i += 2) { const x = t.x[i], n = -t.z[i]; if (!t.hide[i] && x >= x0 && x <= x1 && n >= n0 && n <= n1 && inRing(x, n, b.ring)) return true; } return false; });
+    };
+    const KTM_CLEAR = 5, SLAB = 0.6;
     // buildings
     for (const b of buildings) {
-      const h = Math.max(1, b.height - b.minHeight);
+      let base = b.minHeight;
+      if (b.minHeight < KTM_CLEAR && b.height > 4.6 && coversKtm(b)) base = Math.max(b.minHeight, b.type === 'roof' ? b.height - SLAB : Math.min(KTM_CLEAR, b.height - SLAB));
+      const h = Math.max(1, b.height - base);
       const shape = new THREE.Shape(b.ring.map(([x, n]) => new THREE.Vector2(x, n)));
       const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
-      g.rotateX(-Math.PI / 2); g.translate(0, b.minHeight, 0);
+      g.rotateX(-Math.PI / 2); g.translate(0, base, 0);
       const mesh = new THREE.Mesh(g, this.mats.build); mesh.castShadow = true; mesh.receiveShadow = true;
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), this.mats.edgeKey);
       const key = !!b.precinct || !!b.station || b.height >= 45;
@@ -210,16 +238,28 @@ export class World {
       const grp = this.railGroups[line];
       const rs = lines.rails.filter((r) => r.line === line && !r.tunnel);
       const deckY = (r: (typeof rs)[number]) => (line === 'lrt' ? lrtDeck(r) : r.elevated ? 6 + Math.max(0, r.layer - 1) * 3 : 0.35);
-      const chained = line === 'lrt' ? new Set(chainWays(rs).flat()) : new Set<Rail>();
+      const chained = line === 'lrt' ? new Set(chainWays(rs).flat()) : line === 'ktm' ? ktmChained : new Set<Rail>();
       // KTM: one mesh per Komuter line (route 2 = Tanjung Malim–Port Klang gets its own colour)
       const isK2 = (r: Rail) => line === 'ktm' && r.route === 2;
       const ribbons = rs.filter((r) => !chained.has(r) && !isK2(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), line === 'lrt' ? 3.2 : 2.6));
       if (line === 'lrt') for (const tr of this.lrtTracks) ribbons.push(ribbon(trackPts(tr, 2).map((p) => p.setY(p.y + 0.15)), 3.2)); // 15 cm above the roof tops it crosses (KJ17)
       grp.add(new THREE.Mesh(merge(ribbons), this.mats.rail[line]));
-      if (line === 'ktm') { const k2 = rs.filter(isK2).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), 2.6)); if (k2.length) grp.add(new THREE.Mesh(merge(k2), this.mats.rail.ktm2)); }
+      // KTM chained tracks: drawn from the track itself (the trains run on it), split where it is in a tunnel
+      const ktmRuns = (want: 1 | 2) => this.ktmTracks.flatMap((tr, k) => {
+        if (this.ktmTrackLine[k] !== want) return [];
+        const out: (THREE.BufferGeometry | null)[] = []; let run: THREE.Vector3[] = [];
+        const flush = () => { if (run.length > 1) out.push(ribbon(run, 2.6)); run = []; };
+        for (let i = tr.inStart; i <= tr.inEnd; i++) { if (tr.hide[i]) { flush(); continue; } if ((i - tr.inStart) % 2 === 0 || i === tr.inEnd || tr.hide[i + 1]) run.push(new THREE.Vector3(tr.x[i], tr.y[i], tr.z[i])); }
+        flush(); return out;
+      });
+      if (line === 'ktm') {
+        const k1 = ktmRuns(1); if (k1.length) grp.add(new THREE.Mesh(merge(k1), this.mats.rail.ktm));
+        const k2 = [...rs.filter((r) => isK2(r) && !chained.has(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), 2.6)), ...ktmRuns(2)]; if (k2.length) grp.add(new THREE.Mesh(merge(k2), this.mats.rail.ktm2));
+      }
       // piers under elevated track every ~32 m
       const piers: THREE.Vector3[] = [];
       if (line === 'lrt') for (const tr of this.lrtTracks) for (const p of trackPts(tr, 32)) piers.push(p);
+      if (line === 'ktm') for (const tr of this.ktmTracks) for (let i = tr.inStart; i <= tr.inEnd; i += 32) if (!tr.hide[i] && tr.y[i] > 1.5) piers.push(new THREE.Vector3(tr.x[i], tr.y[i], tr.z[i]));
       for (const r of rs.filter((r) => r.elevated && !chained.has(r) && r.service !== 'crossover')) {
         let acc = 0;
         for (let i = 1; i < r.pts.length; i++) {
@@ -235,9 +275,10 @@ export class World {
       }
       this.scene.add(grp);
     }
-    // trains (LRT only; the track builder is generic and could take KTM/ERL chains, not enabled)
+    // trains: LRT on the viaduct; KTM Komuter on both lines (one instanced set, livery stripe per line)
     this.trains = new Trains(this.lrtTracks, H);
-    this.scene.add(this.trains.group);
+    this.ktmTrains = new Trains(this.ktmTracks, H, KTM_TRAIN);
+    this.scene.add(this.trains.group, this.ktmTrains.group);
 
     // landmark blocks whose footprint centroid lies outside the study square (full OSM outline, not clipped)
     for (const l of landmarks.filter((l) => !l.buildingId)) {
@@ -364,6 +405,8 @@ export class World {
     m.foot.color = cssColor('--grey-2'); m.footBridge.color = cssColor('--ink');
     m.landmark.color = cssColor('--landmark'); m.podium.color = cssColor('--podium');
     this.trains.setColors(cssColor('--train-body'), cssColor('--train-window'), cssColor('--train-accent'), edge, (parseFloat(cssVar('--scene-edge-opacity')) || 0.5) * 0.85);
+    this.ktmTrains.setTrackColors(this.ktmTrackLine.map((l) => cssColor(l === 1 ? '--c-ktm1' : '--c-ktm2')));
+    this.ktmTrains.setColors(cssColor('--train-body'), cssColor('--train-window'), cssColor('--train-accent'), edge, (parseFloat(cssVar('--scene-edge-opacity')) || 0.5) * 0.85);
     m.route.color = cssColor('--c-route'); m.routeDim.color = cssColor('--c-route');
     const dark = document.documentElement.dataset.theme === 'dark';
     this.hemiBase = dark ? 1.6 : 2.4; this.hemi.groundColor = new THREE.Color(dark ? 0x202020 : 0xbdbdb8);
@@ -420,10 +463,11 @@ export class World {
     this.precinctGroup.visible = md.precincts;
     this.landmarkGroup.visible = md.landmarks;
     this.trains.group.visible = this.trainsOn && md.rails.lrt !== 'hidden';
+    this.ktmTrains.group.visible = this.trainsOn && md.rails.ktm !== 'hidden';
   }
 
   // ---------- trains ----------
-  /** Show or hide the animated LRT trainsets (scene life; user toggle). */
+  /** Show or hide the animated LRT and KTM trainsets (scene life; user toggle). */
   setTrains(on: boolean) { this.trainsOn = on; this.setMode({}); }
   get trainsVisible() { return this.trainsOn; }
 
@@ -434,12 +478,13 @@ export class World {
   }
   /** Start / stop the 00 turntable orbit (it starts from wherever the camera is once any flight has landed). */
   setTurntable(on: boolean) { this.turnOn = on; this.turnHeld = false; this.turnResumeAt = 0; }
+  get turntableOn() { return this.turnOn; }
   /** True while the turntable is actually advancing the bearing this frame. */
   turntableActive(now = performance.now()) { return this.turnOn && !this.tween && !this.turnHeld && now >= this.turnResumeAt && !document.hidden && !prefersReducedMotion(); }
   private stepTurntable(now: number, dt: number) {
     if (!this.turntableActive(now)) return;
     const off = this.camera.position.clone().sub(this.controls.target); const s = new THREE.Spherical().setFromVector3(off);
-    s.theta += (Math.PI * 2 / World.TURN_PERIOD_S) * Math.min(dt, 0.1); // clamped: no jump after a stall / hidden tab
+    s.theta += this.turnSign * (Math.PI * 2 / this.turnPeriodS) * Math.min(dt, 0.1); // clamped: no jump after a stall / hidden tab
     this.camera.position.copy(this.controls.target).add(off.setFromSpherical(s)); this.camera.lookAt(this.controls.target);
   }
   /** True while a camera flight (chapter preset / reset) is animating. */
@@ -496,11 +541,13 @@ export class World {
 
   private frame(now: number) {
     // trains: run on a clamped clock that only advances while the page is visible;
-    // with prefers-reduced-motion they are shown static (one train standing at KJ17)
+    // with prefers-reduced-motion they are shown static (one train standing at KJ17, one at each KTM station)
     const dt = this.lastFrame ? (now - this.lastFrame) / 1000 : 0; this.lastFrame = now;
-    if (prefersReducedMotion()) this.trains.freeze(this.trains.reducedMotionClock());
-    else if (!document.hidden) this.trains.step(dt);
-    this.trains.update();
+    for (const tr of [this.trains, this.ktmTrains]) {
+      if (prefersReducedMotion()) tr.freeze(tr.reducedMotionClock());
+      else if (!document.hidden) tr.step(dt);
+      tr.update();
+    }
     if (this.viewShift !== this.viewShiftTarget || this.viewShiftY !== this.viewShiftYTarget) {
       const near = Math.abs(this.viewShift - this.viewShiftTarget) <= 0.3 && Math.abs(this.viewShiftY - this.viewShiftYTarget) <= 0.3;
       if (near) { this.viewShift = this.viewShiftTarget; this.viewShiftY = this.viewShiftYTarget; }
