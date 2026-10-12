@@ -129,7 +129,7 @@ export class World {
   // turntable (00 Overview): slow continuous orbit about the target at the preset pitch / distance. Paused while the
   // user drags / zooms (resumes TURN_RESUME_MS after they stop), during flights, while the tab is hidden, and never
   // runs under prefers-reduced-motion.
-  static readonly TURN_PERIOD_S = 75; static readonly TURN_RESUME_MS = 3000;
+  static readonly TURN_PERIOD_S = 75; static readonly TURN_RESUME_MS = 1500;
   /** Seconds for one full turn. The dev camera GUI writes this. */
   turnPeriodS = World.TURN_PERIOD_S;
   /** +1 orbits the camera clockwise from above; -1 is anti-clockwise (chapter 00 default). */
