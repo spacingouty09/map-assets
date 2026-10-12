@@ -5,7 +5,6 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { buildings, lines, areas, routes, walks, meta, landmarks, station, type XY, type Building, type HeightSource, type Route, type Zone, type Rail } from './data';
 import { chainWays, chainWaysAnyDir, orientLeftHand, buildTrack, Trains, KTM_TRAIN, type Track } from './trains';
 import { sunVector } from './sun';
-import { CUT_KINDS, cutDepth, cutKind, underRoads } from './cutaway';
 
 export interface View { target: [number, number, number]; azimuth: number; polar: number; distance: number }
 export type RailState = 'highlight' | 'context' | 'hidden';
@@ -24,14 +23,12 @@ export interface SceneMode {
   threshold: number;
   precincts: boolean;
   landmarks: boolean; // highlight the landmark mosques (chapter 01 Landmarks)
-  cutaway: boolean; // 05: below-ground roads (OSM tunnel=yes / layer<0) under a translucent ground, with a cut-section edge
-  carFlow: boolean; // 05: animated cars in the cutaway tunnels (static under prefers-reduced-motion)
   airport: boolean; // 02: ERL tracks in the KLIA Transit colour + the suspended Skypark Line as a dashed overlay on the Line 2 tracks
 }
 export const DEFAULT_MODE: SceneMode = {
   rails: { lrt: 'context', ktm: 'context', erl: 'context' },
   footways: 'hidden', routeSet: 'none', routeFocus: null, walkFocus: null, routeStyle: 'plain', sun: null, shadeDots: false, muteWater: false, xray: false,
-  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false, airport: false, cutaway: false, carFlow: false,
+  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false, airport: false,
 };
 
 const DESK_W = 1920, DESK_H = 1080; // desktop stage; mobile uses the real viewport size (setStageSize)
@@ -132,10 +129,6 @@ export class World {
   private skypark: THREE.Mesh | null = null;
   private erlColors = { base: new THREE.Color(), klia: new THREE.Color() };
   private trainsOn = true;
-  /** 05 cutaway: tunnel ribbons by kind, the cut-section box, and the car flow. */
-  private cutGroup = new THREE.Group();
-  private cutMats = { klec: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), midvalley: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), other: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), moto: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), earth: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.32, depthWrite: false }), edge: new THREE.LineBasicMaterial(), car: new THREE.MeshBasicMaterial() };
-  private cars: { mesh: THREE.InstancedMesh; paths: { pts: THREE.Vector3[]; cum: number[] }[]; slots: { p: number; d: number }[]; t: number } | null = null;
   private lastFrame = 0;
   // turntable (00 Overview): slow continuous orbit about the target at the preset pitch / distance. Paused while the
   // user drags / zooms (resumes TURN_RESUME_MS after they stop), during flights, while the tab is hidden, and never
@@ -201,23 +194,6 @@ export class World {
     const roadG = (sel: boolean, y: number) => merge(lines.roads.filter((r) => major.has(r.cls) === sel && !r.tunnel).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, y)), r.w)));
     this.scene.add(new THREE.Mesh(roadG(false, 0.06), this.mats.road));
     this.scene.add(new THREE.Mesh(roadG(true, 0.08), this.mats.roadMajor));
-    // 05 cutaway: OSM below-ground roads (tunnel=yes or layer<0) at an estimated depth, a section box down to the deepest one, cars
-    {
-      const under = underRoads;
-      const at = (r: (typeof under)[number]) => r.pts.map(([x, n]) => v3(x, n, -cutDepth(r.layer)));
-      for (const k of CUT_KINDS) { const g = under.filter((r) => cutKind(r) === k).map((r) => ribbon(at(r), Math.max(6, r.w * 1.3))); if (g.some(Boolean)) this.cutGroup.add(new THREE.Mesh(merge(g), this.cutMats[k])); }
-      const D = Math.max(...under.map((r) => cutDepth(r.layer))) + 3;
-      const wall = (a: THREE.Vector3, b: THREE.Vector3) => { const g = new THREE.BufferGeometry().setFromPoints([a, b, a.clone().setY(-D), b, b.clone().setY(-D), a.clone().setY(-D)]); g.computeVertexNormals(); return g; };
-      const c = [v3(-H, -H, 0), v3(H, -H, 0), v3(H, H, 0), v3(-H, H, 0)];
-      this.cutGroup.add(new THREE.Mesh(merge(c.map((p, i) => wall(p, c[(i + 1) % 4]))), this.cutMats.earth));
-      const e: THREE.Vector3[] = []; c.forEach((p, i) => { const q = c[(i + 1) % 4]; e.push(p.clone().setY(-D), q.clone().setY(-D), p, p.clone().setY(-D)); });
-      this.cutGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(e), this.cutMats.edge));
-      const paths = under.map((r) => { const pts = at(r).map((p) => p.setY(p.y + 0.9)); const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1])); return { pts, cum }; }).filter((pa) => pa.cum[pa.cum.length - 1] > 30);
-      const slots: { p: number; d: number }[] = []; paths.forEach((pa, p) => { const L = pa.cum[pa.cum.length - 1]; for (let d = 8; d < L; d += 45) slots.push({ p, d }); });
-      const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(4.4, 1.6, 1.9), this.cutMats.car, slots.length);
-      this.cars = { mesh, paths, slots, t: 0 }; this.cutGroup.add(mesh); this.placeCars();
-      this.cutGroup.visible = false; this.scene.add(this.cutGroup);
-    }
 
     // KTM: per Komuter line, the OSM main-track ways chained into one continuous track per direction (left-hand
     // running), at the drawn deck height with 4 % approach ramps to the bridges (schematic); tunnel stretches carry trains but are not drawn.
@@ -440,7 +416,6 @@ export class World {
     m.ground.color = cssColor('--scene-ground');
     m.road.color = cssColor('--scene-road'); m.roadMajor.color = cssColor('--scene-road-major');
     m.water.color = cssColor('--c-water'); m.green.color = cssColor('--c-green');
-    const cm = this.cutMats; cm.klec.color = cssColor('--c-cut-road'); cm.midvalley.color = cssColor('--c-cut-midvalley'); cm.other.color = cssColor('--c-cut-other'); cm.moto.color = cssColor('--c-cut-moto'); cm.earth.color = cssColor('--c-cut-earth'); cm.edge.color = cssColor('--c-cut-edge'); cm.car.color = cssColor('--c-cut-car');
     m.build.color = cssColor('--scene-building'); m.context.color = cssColor('--scene-building-context');
     m.fade.color = cssColor('--scene-building-context'); m.xray.color = cssColor('--scene-building');
     m.pier.color = cssColor('--scene-building-context');
@@ -512,13 +487,6 @@ export class World {
       this.sun.intensity = this.sunBase; this.hemi.intensity = this.hemiBase; this.sun.castShadow = true;
     }
     m.water.color = cssColor(md.muteWater ? '--scene-water-muted' : '--c-water');
-    // cutaway: ground, roads, water and parks turn translucent so the tunnels show beneath
-    for (const mt of [m.ground, m.road, m.roadMajor, m.water, m.green] as THREE.Material[]) {
-      if (mt.transparent !== md.cutaway) { mt.transparent = md.cutaway; mt.depthWrite = !md.cutaway; mt.needsUpdate = true; }
-      mt.opacity = md.cutaway ? (mt === m.ground ? 0.42 : 0.55) : 1;
-    }
-    this.cutGroup.visible = md.cutaway;
-    if (this.cars) this.cars.mesh.visible = md.cutaway && md.carFlow && this.trainsOn;
     this.precinctGroup.visible = md.precincts;
     this.landmarkGroup.visible = md.landmarks;
     this.trains.group.visible = this.trainsOn && md.rails.lrt !== 'hidden';
@@ -598,16 +566,6 @@ export class World {
   }
   setPixelRatio(stageScale: number) { this.renderer.setPixelRatio(Math.min(2, Math.max(1, window.devicePixelRatio * stageScale))); this.renderer.setSize(this.stageW, this.stageH, false); }
 
-  private placeCars() {
-    const c = this.cars; if (!c) return; const o = new THREE.Object3D();
-    c.slots.forEach((s, i) => {
-      const pa = c.paths[s.p]; const L = pa.cum[pa.cum.length - 1]; const d = (s.d + c.t * 8) % L; // 8 m/s ≈ 29 km/h (illustrative)
-      let j = 1; while (j < pa.cum.length - 1 && pa.cum[j] < d) j++;
-      const a = pa.pts[j - 1], b = pa.pts[j]; const f = (d - pa.cum[j - 1]) / Math.max(1e-6, pa.cum[j] - pa.cum[j - 1]);
-      o.position.lerpVectors(a, b, f); o.rotation.set(0, Math.atan2(-(b.z - a.z), b.x - a.x), 0); o.updateMatrix(); c.mesh.setMatrixAt(i, o.matrix);
-    });
-    c.mesh.instanceMatrix.needsUpdate = true;
-  }
   private frame(now: number) {
     // trains: run on a clamped clock that only advances while the page is visible;
     // with prefers-reduced-motion they are shown static (one train standing at KJ17, one at each KTM station)
@@ -623,7 +581,6 @@ export class World {
       else { this.viewShift += (this.viewShiftTarget - this.viewShift) * 0.12; this.viewShiftY += (this.viewShiftYTarget - this.viewShiftY) * 0.12; }
       this.applyViewOffset();
     }
-    if (this.cars && this.cars.mesh.visible && !prefersReducedMotion() && !document.hidden && dt > 0) { this.cars.t += Math.min(dt, 0.1); this.placeCars(); }
     this.stepTween(now);
     this.stepTurntable(now, dt);
     if (!this.tween) this.controls.update();
