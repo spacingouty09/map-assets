@@ -1,11 +1,20 @@
-// The smallest site that uses map-assets: a renderer, a camera with orbit controls, and the model.
-// In a website the import is '@map-assets' (see README.md, "Use it in a website").
+// The smallest site that uses map-assets: a renderer, a camera with orbit controls, and one area's model.
+// Pick the area with ?area=<id> (or the picker); in a website the import is '@map-assets' (see README.md).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { MapModel, LIGHT_PALETTE, DARK_PALETTE } from '../../src';
+import { MapModel, LIGHT_PALETTE, DARK_PALETTE, listAreas, loadArea } from '../../src';
 
 const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const areas = listAreas();
+const areaId = new URLSearchParams(location.search).get('area') ?? areas[0].id;
+
+// area picker (each area is its own data chunk, loaded on demand)
+const picker = document.createElement('select');
+picker.id = 'area'; picker.setAttribute('aria-label', 'Area');
+for (const a of areas) picker.append(new Option(a.name, a.id, false, a.id === areaId));
+picker.addEventListener('change', () => { location.search = `?area=${encodeURIComponent(picker.value)}`; });
+document.body.append(picker);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
@@ -22,18 +31,21 @@ camera.position.set(1100, 1300, 1500);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-const model = new MapModel({ palette: dark ? DARK_PALETTE : LIGHT_PALETTE });
-model.setMode({ rails: { lrt: 'highlight', ktm: 'highlight', erl: 'context' }, footways: 'faint', routeSet: 'walks' });
-scene.add(model.group);
-
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
-let last = 0;
-renderer.setAnimationLoop((now) => {
-  const dt = last ? (now - last) / 1000 : 0; last = now;
-  model.update(now, dt, { reducedMotion: reducedMotion(), paused: document.hidden });
-  controls.update();
-  renderer.render(scene, camera);
+
+void loadArea(areaId).then((area) => {
+  const model = new MapModel(area, { palette: dark ? DARK_PALETTE : LIGHT_PALETTE });
+  model.setMode({ rails: { lrt: 'highlight', ktm: 'highlight', erl: 'context' }, footways: 'faint', routeSet: 'walks' });
+  scene.add(model.group);
+  (window as unknown as { model: MapModel }).model = model; // for poking at it from the console
+  let last = 0;
+  renderer.setAnimationLoop((now) => {
+    const dt = last ? (now - last) / 1000 : 0; last = now;
+    model.update(now, dt, { reducedMotion: reducedMotion(), paused: document.hidden });
+    controls.update();
+    renderer.render(scene, camera);
+  });
 });

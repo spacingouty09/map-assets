@@ -1,0 +1,12 @@
+{
+  "fetched": "2026-10-12",
+  "notes": "Cited facts quoted in websites' text about this area (every number shown must come from data or a cited source). Values as published; fetched on the date above.",
+  "facts": {
+    "towers": { "heightM": 451.9, "floors": 88, "completed": 1998, "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur", "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur" },
+    "park": { "areaHa": 20, "areaAcres": 50, "created": "mid-1996", "designer": "Roberto Burle Marx", "lakeM2": 10000, "lakeName": "Lake Symphony (Tasik Simfoni)", "publisher": "Wikipedia – KLCC Park", "url": "https://en.wikipedia.org/wiki/KLCC_Park" },
+    "ombak": { "opened": "2026-08-21", "retailLevels": 6, "basementLevels": 3, "owner": "KLCC Holdings Sdn Bhd", "publisher": "Wikipedia – Ombak KLCC", "url": "https://en.wikipedia.org/wiki/Ombak_KLCC", "note": "Directly integrated with the underground Persiaran KLCC MRT station (two portals inside, a third across the street)." },
+    "kj10": { "opened": "1999-06-01", "line": "Kelana Jaya Line (5)", "underground": true, "publisher": "Wikipedia – KLCC LRT station", "url": "https://en.wikipedia.org/wiki/KLCC_LRT_station", "note": "A pedestrian subway links the station to Suria KLCC." },
+    "py21": { "opened": "2023-03-16", "line": "Putrajaya Line (12)", "underground": true, "publisher": "Wikipedia – Putrajaya line (phase 2 opening) and Persiaran KLCC MRT station", "url": "https://en.wikipedia.org/wiki/Putrajaya_line" },
+    "convention": { "opened": 2005, "publisher": "Wikipedia – Kuala Lumpur Convention Centre", "url": "https://en.wikipedia.org/wiki/Kuala_Lumpur_Convention_Centre", "note": "The article gives both May and June 2005." }
+  }
+}

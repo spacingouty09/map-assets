@@ -1,0 +1,133 @@
+{
+  "precincts": [],
+  "zones": [
+    {
+      "id": "towers",
+      "priority": 1,
+      "names": [
+        "Menara Berkembar Petronas"
+      ]
+    },
+    {
+      "id": "suria",
+      "priority": 2,
+      "names": [
+        "Suria KLCC"
+      ]
+    },
+    {
+      "id": "convention",
+      "priority": 3,
+      "names": [
+        "Pusat Konvensyen Kuala Lumpur"
+      ]
+    },
+    {
+      "id": "ombak",
+      "priority": 4,
+      "names": [
+        "Plaza Ombak KLCC"
+      ]
+    }
+  ],
+  "zoneNotes": "OSM has no landuse polygon for the KLCC development, so the zones are the four landmark complexes by OSM building name (an outline and the building:parts mapped inside it): the Petronas Twin Towers (OSM 'Menara Berkembar Petronas', drawn as 25 stepped parts), Suria KLCC, the KL Convention Centre (OSM 'Pusat Konvensyen Kuala Lumpur') and Ombak KLCC (OSM 'Plaza Ombak KLCC', building=mall, opened 21 Aug 2026).",
+  "partParents": {
+    "way/137396365": "way/279944536"
+  },
+  "partParentNotes": "way/137396365 is the Petronas Towers skybridge (OSM building:part, min_height 170 m, height 180 m). Its centre lies inside both the Suria KLCC outline (the podium) and the towers outline; it belongs to the towers.",
+  "landmarks": [
+    {
+      "name": "Menara Berkembar Petronas",
+      "kind": "towers"
+    },
+    {
+      "name": "Suria KLCC",
+      "kind": "mall"
+    },
+    {
+      "name": "Pusat Konvensyen Kuala Lumpur",
+      "kind": "convention"
+    },
+    {
+      "name": "Plaza Ombak KLCC",
+      "kind": "mall"
+    }
+  ],
+  "anchors": [
+    {
+      "id": "KJ10",
+      "label": "KLCC LRT (KJ10)",
+      "station": "KJ10"
+    },
+    {
+      "id": "PY21",
+      "label": "Persiaran KLCC MRT (PY21)",
+      "station": "PY21"
+    },
+    {
+      "id": "SURIA",
+      "label": "Suria KLCC",
+      "building": "Suria KLCC"
+    },
+    {
+      "id": "CONVENTION",
+      "label": "KL Convention Centre",
+      "building": "Pusat Konvensyen Kuala Lumpur"
+    },
+    {
+      "id": "OMBAK",
+      "label": "Ombak KLCC",
+      "building": "Plaza Ombak KLCC"
+    },
+    {
+      "id": "WALKWAY",
+      "label": "Walkway to Bukit Bintang",
+      "footway": "KLCC-Bukit Bintang Pedestrian Walkway",
+      "end": "south"
+    }
+  ],
+  "anchorNotes": "WALKWAY: the southern end of the KLCC–Bukit Bintang pedestrian walkway inside the study square, where it leaves towards Pavilion (a future spot).",
+  "routes": [
+    [
+      "leg1",
+      "KJ10",
+      "PY21"
+    ]
+  ],
+  "routeNotes": "routes: the walk between the two stations, KLCC (Kelana Jaya Line, red) and Persiaran KLCC (Putrajaya Line, yellow): they are not an official interchange, so changing lines means walking.",
+  "walks": [
+    [
+      "w-kj10-convention",
+      "KJ10",
+      "CONVENTION"
+    ],
+    [
+      "w-py21-suria",
+      "PY21",
+      "SURIA"
+    ],
+    [
+      "w-kj10-ombak",
+      "KJ10",
+      "OMBAK"
+    ],
+    [
+      "w-convention-walkway",
+      "CONVENTION",
+      "WALKWAY"
+    ]
+  ],
+  "railLengths": [
+    "lrt",
+    "py",
+    "mr"
+  ],
+  "model": {
+    "lrtStop": "KJ10",
+    "undergroundStops": {
+      "lrt": "KJ10",
+      "py": "PY21"
+    }
+  },
+  "modelNotes": "Both lines run in tunnels here, so their tracks and trains are drawn in the underground view; undergroundStops are where their trains stop. The KL Monorail touches the south-west corner on its viaduct (above ground)."
+}

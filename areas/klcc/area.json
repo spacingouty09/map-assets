@@ -1,0 +1,9 @@
+{
+  "id": "klcc",
+  "name": "KLCC",
+  "kind": "signature",
+  "summary": "Kuala Lumpur City Centre: the Petronas Twin Towers, Suria KLCC, KLCC Park, the KL Convention Centre and Ombak KLCC, around KLCC LRT (KJ10, Kelana Jaya Line) and Persiaran KLCC MRT (PY21, Putrajaya Line).",
+  "center": { "lat": 3.1563, "lon": 101.715 },
+  "halfSizeM": 600,
+  "notes": "Study area: 1.2 km x 1.2 km centred between the Petronas Twin Towers and Persiaran KLCC MRT, so that the towers, Suria KLCC, the Convention Centre, KLCC Park, Ombak KLCC and both stations sit inside with a margin (positions from OpenStreetMap, 2026-10-12). Ampang Park (KJ9 / PY20) and Conlay (PY22) lie at the edges."
+}

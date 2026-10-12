@@ -40,6 +40,15 @@ export const KTM_TRAIN: TrainSpec = {
   start: 20, // load just after those trains depart, with the opposite trains on their way in
   band: { y: 2.5, h: 0.8 }, stripe: { y: 1.5, h: 0.5 },
 };
+/** MRT Putrajaya Line set, used underground at KLCC. Illustrative proportions and running figures (no timetable source):
+ *  4-car sets of about 22 m cars, like the LRT figures above compressed so a train passes every few minutes per track. */
+export const MRT_TRAIN: TrainSpec = {
+  carLen: 22, carGap: 0.9, carW: 3.1, carH: 3.6, floor: 0.9, bogieInset: 3.4, nose: 1.6,
+  vMax: 18, accel: 1.0, decel: 1.0, dwell: 20, headway: 150,
+  pattern: [[4], [4]],
+  trackOffset: 0.5,
+  band: { y: 2.9, h: 0.8 }, stripe: { y: 1.7, h: 0.4 },
+};
 const EXT = 160; // m of virtual straight track beyond each map edge
 
 /** hide: 1 where the track is in a tunnel (cars there are not drawn); elev: 1 on bridge / viaduct ways. */

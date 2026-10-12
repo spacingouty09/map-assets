@@ -1,16 +1,17 @@
-// The 3D model of the study area: block massing, ground layers, rail and trains, footways, walking routes, landmark
-// mosques and the sun light. DOM-free: colours come from a Palette, time and motion flags from update(). A site adds
-// `model.group` to its own scene and owns the renderer, camera and controls.
+// The 3D model of one study area: block massing, ground layers, rail and trains, footways, walking routes, landmarks
+// and the sun light. DOM-free: colours come from a Palette, time and motion flags from update(). A site loads an area
+// (loadArea), builds `new MapModel(area)`, adds `model.group` to its own scene and owns the renderer, camera and controls.
 import * as THREE from 'three';
-import { buildings, lines, areas, routes, walks, meta, landmarks, station, type XY, type Building, type HeightSource, type Route, type Zone, type Rail } from '../data';
-import { chainWays, chainWaysAnyDir, orientLeftHand, buildTrack, Trains, KTM_TRAIN, type Track } from './trains';
+import type { Area, XY, Building, HeightSource, Route, Zone, Rail, RailLineId } from '../data';
+import { chainWays, chainWaysAnyDir, orientLeftHand, buildTrack, Trains, TRAIN, KTM_TRAIN, MRT_TRAIN, type Track } from './trains';
 import { sunVector } from '../sun';
 import { v3, ribbon, merge, flatShape, routeY } from './geometry';
 import { LIGHT_PALETTE, type Palette } from './palette';
 
 export type RailState = 'highlight' | 'context' | 'hidden';
+type RailGroupId = 'lrt' | 'ktm' | 'erl' | 'py' | 'mr';
 export interface SceneMode {
-  rails: { lrt: RailState; ktm: RailState; erl: RailState };
+  rails: Record<RailGroupId, RailState>;
   footways: 'hidden' | 'faint' | 'show' | 'rain';
   routeSet: 'none' | 'legs' | 'walks';
   routeFocus: number | null; // legs: index of the focused leg
@@ -25,12 +26,25 @@ export interface SceneMode {
   precincts: boolean;
   landmarks: boolean; // highlight the landmark mosques (chapter 01 Landmarks)
   airport: boolean; // 02: ERL tracks in the KLIA Transit colour + the suspended Skypark Line as a dashed overlay on the Line 2 tracks
+  /** underground view: tunnels (rail, road, pedestrian), underground stations and their trains below a see-through ground */
+  underground: boolean;
+  /** facility markers (facilities.json): hotels, car parks (footprint + entrances), bus stops, station entrances */
+  facilities: { hotels: boolean; parking: boolean; bus: boolean; entrances: boolean };
+  /** a facility to emphasise (id from facilities.json), or null */
+  facilityFocus: string | null;
 }
 export const DEFAULT_MODE: SceneMode = {
-  rails: { lrt: 'context', ktm: 'context', erl: 'context' },
+  rails: { lrt: 'context', ktm: 'context', erl: 'context', py: 'context', mr: 'context' },
   footways: 'hidden', routeSet: 'none', routeFocus: null, walkFocus: null, routeStyle: 'plain', sun: null, shadeDots: false, muteWater: false, xray: false,
-  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false, airport: false,
+  buildingStyle: 'default', threshold: 60, precincts: false, landmarks: false, airport: false, underground: false,
+  facilities: { hotels: false, parking: false, bus: false, entrances: false }, facilityFocus: null,
 };
+/** A change to the mode: any fields, and only the rail lines / facility types that change. */
+export type ModePatch = Partial<Omit<SceneMode, 'rails' | 'facilities'>> & { rails?: Partial<SceneMode['rails']>; facilities?: Partial<SceneMode['facilities']> };
+
+/** Estimated depth (m) below ground of a way on OSM layer `layer`: 4.5 m per layer step (a tunnel on layer 0 counts as -1).
+ *  OSM gives the order of levels, not depths, so this is schematic. */
+export const undergroundDepth = (layer: number) => 4.5 * Math.max(1, -Math.min(0, layer));
 
 export interface ModelOptions { palette?: Palette }
 export interface UpdateOptions {
@@ -40,7 +54,6 @@ export interface UpdateOptions {
   paused?: boolean;
 }
 
-const H = meta.halfSizeM;
 const col = (c: string) => new THREE.Color(c || '#ff00ff');
 
 interface BMesh { data: Building; mesh: THREE.Mesh; edges: THREE.LineSegments; key: boolean }
@@ -48,6 +61,8 @@ interface BMesh { data: Building; mesh: THREE.Mesh; edges: THREE.LineSegments; k
 export class MapModel {
   /** Root of the model (lights included); add it to your scene. */
   readonly group = new THREE.Group();
+  /** The area this model draws. */
+  readonly area: Area;
   mode: SceneMode = structuredClone(DEFAULT_MODE);
   palette: Palette;
 
@@ -68,7 +83,7 @@ export class MapModel {
     edgeKey: new THREE.LineBasicMaterial({ transparent: true }), edgeContext: new THREE.LineBasicMaterial({ transparent: true }),
     edgeFade: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.08 }),
     // polygon offset: the deck sits exactly on top of the KJ17 roof block (both 10.5 m); keep it on top without z-fighting
-    rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm2: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
+    rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm2: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), py: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), mr: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
     pier: new THREE.MeshLambertMaterial(),
     foot: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), footBridge: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }),
     route: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
@@ -78,7 +93,7 @@ export class MapModel {
     landmark: new THREE.MeshLambertMaterial(),
     podium: new THREE.MeshLambertMaterial(), // block a landmark stands on (Overview)
   };
-  private railGroups: Record<'lrt' | 'ktm' | 'erl', THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group() };
+  private railGroups: Record<RailGroupId, THREE.Group> = { lrt: new THREE.Group(), ktm: new THREE.Group(), erl: new THREE.Group(), py: new THREE.Group(), mr: new THREE.Group() };
   private footGroup = new THREE.Group();
   private routeMeshes: THREE.Mesh[] = []; // legs (chapter 05)
   private walkMeshes = new Map<string, THREE.Mesh>(); // walking routes (chapter 06)
@@ -90,19 +105,31 @@ export class MapModel {
   private walkDrawStart = 0;
   private hemiBase = 2.4; private sunBase = 1.5;
   private precinctGroup = new THREE.Group();
-  /** LRT tracks (one chain per direction) and the animated trainsets on them. */
+  /** LRT tracks (one chain per direction) and the animated trainsets on them (null when the area has no above-ground LRT). */
   lrtTracks: Track[] = [];
-  trains!: Trains;
+  trains: Trains | null = null;
   /** KTM Komuter tracks (two per line, oriented for left-hand running), their line (1 / 2), and the trainsets on them. */
   ktmTracks: Track[] = []; ktmTrackLine: (1 | 2)[] = [];
-  ktmTrains!: Trains;
+  ktmTrains: Trains | null = null;
   /** 02: suspended KL Sentral–Terminal Skypark Line (10), a thin dashed ribbon offset beside the Line 2 track; no trains. */
   private skypark: THREE.Mesh | null = null;
   private erlColors = { base: new THREE.Color(), klia: new THREE.Color() };
   private trainsOn = true;
   private landmarkGroup = new THREE.Group(); // landmark blocks outside the study square (shown with mode.landmarks)
+  /** underground view: tunnels, underground stations, section walls (built only where the area has them) */
+  private underGroup = new THREE.Group();
+  private underMats: { rail: Map<RailLineId, THREE.MeshBasicMaterial>; road: THREE.MeshBasicMaterial; foot: THREE.MeshBasicMaterial; station: THREE.MeshBasicMaterial; wall: THREE.MeshBasicMaterial } | null = null;
+  /** trains in the tunnels (underground view), one set per line in rules.model.undergroundStops */
+  underTrains: { line: RailLineId; tracks: Track[]; trains: Trains }[] = [];
+  /** facility markers by type (built only for types the area has) */
+  private facGroups: Partial<Record<keyof SceneMode['facilities'], THREE.Group>> = {};
+  private facMats: { hotel: THREE.MeshLambertMaterial; parking: THREE.MeshLambertMaterial; parkingArea: THREE.MeshBasicMaterial; bus: THREE.MeshLambertMaterial; entrance: THREE.MeshLambertMaterial; focus: THREE.MeshBasicMaterial } | null = null;
+  private facFocus: THREE.Mesh | null = null;
+  /** facility id -> marker top position (world), for focusing and labels */
+  facilityAt = new Map<string, THREE.Vector3>();
 
-  constructor(opts: ModelOptions = {}) {
+  constructor(area: Area, opts: ModelOptions = {}) {
+    this.area = area;
     this.palette = opts.palette ?? LIGHT_PALETTE;
     this.group.add(this.hemi, this.sun, this.sun.target);
     this.sun.position.set(-420, 900, -380);
@@ -119,6 +146,10 @@ export class MapModel {
 
   // ---------- construction ----------
   private build() {
+    const { buildings, lines, areas, routes, walks, landmarks, station } = this.area;
+    const H = this.area.meta.halfSizeM;
+    const rules = this.area.rules.model ?? {};
+    for (const z of this.area.zones) if (!this.mats.zone[z]) this.mats.zone[z] = new THREE.MeshLambertMaterial(); // zones beyond the default three
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.mats.ground);
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.group.add(ground);
 
@@ -142,8 +173,8 @@ export class MapModel {
     // running), at the drawn deck height with 4 % approach ramps to the bridges (schematic); tunnel stretches carry trains but are not drawn.
     const ktmDeck = (r: Rail) => (r.elevated ? 6 + Math.max(0, r.layer - 1) * 3 : 0.35);
     const ktmChained = new Set<Rail>();
-    for (const line of [1, 2] as const) {
-      const st = station(line === 1 ? 'KB01' : 'KD01');
+    for (const { route: line, stop } of rules.ktm ?? []) {
+      const st = station(stop);
       const chains = chainWaysAnyDir(lines.rails.filter((r) => r.line === 'ktm' && r.route === line));
       for (const c of chains) for (const w of c.src) ktmChained.add(w);
       for (const ch of orientLeftHand(chains.map((c) => c.chain))) { this.ktmTracks.push(buildTrack(ch, ktmDeck, st ? st.c : null, { smoothY: 8, maxGrade: 0.04, hidden: (r) => r.tunnel })); this.ktmTrackLine.push(line); }
@@ -176,12 +207,13 @@ export class MapModel {
     // LRT: the OSM track ways are chained into one continuous track per direction (smoothed deck height,
     // no steps at way joins); the same tracks carry the trains.
     const lrtDeck = (r: Rail) => (r.elevated ? 9 + Math.max(0, r.layer - 2) * 1.5 : 0.35);
-    const kj17 = station('KJ17');
+    const kj17 = rules.lrtStop ? station(rules.lrtStop) : null;
     const lrtWays = lines.rails.filter((r) => r.line === 'lrt' && !r.tunnel);
     this.lrtTracks = chainWays(lrtWays).map((ch) => buildTrack(ch, lrtDeck, kj17 ? kj17.c : null));
     const trackPts = (tr: Track, every: number) => { const out: THREE.Vector3[] = []; for (let i = tr.inStart; i <= tr.inEnd; i += every) out.push(new THREE.Vector3(tr.x[i], tr.y[i], tr.z[i])); const e = tr.inEnd; if ((e - tr.inStart) % every) out.push(new THREE.Vector3(tr.x[e], tr.y[e], tr.z[e])); return out; };
     const pierGeo = new THREE.BoxGeometry(2.2, 1, 2.2);
-    for (const line of ['lrt', 'ktm', 'erl'] as const) {
+    const extraLines = (['py', 'mr'] as const).filter((l) => lines.rails.some((r) => r.line === l && !r.tunnel)); // above-ground MRT / monorail track, if any
+    for (const line of ['lrt', 'ktm', 'erl', ...extraLines] as const) {
       const grp = this.railGroups[line];
       const rs = lines.rails.filter((r) => r.line === line && !r.tunnel);
       const deckY = (r: (typeof rs)[number]) => (line === 'lrt' ? lrtDeck(r) : r.elevated ? 6 + Math.max(0, r.layer - 1) * 3 : 0.35);
@@ -203,7 +235,7 @@ export class MapModel {
         const k1 = ktmRuns(1); if (k1.length) grp.add(new THREE.Mesh(merge(k1), this.mats.rail.ktm));
         const k2 = [...rs.filter((r) => isK2(r) && !chained.has(r)).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, deckY(r))), 2.6)), ...ktmRuns(2)]; if (k2.length) grp.add(new THREE.Mesh(merge(k2), this.mats.rail.ktm2));
         // Skypark (Line 10) used the Line 2 tracks (OSM relations 9985660 / 8391024): dashes 10 m on / 6 m off, ~1 m wide, 3.5 m to the outer side
-        const k2i = this.ktmTrackLine.indexOf(2), k2j = this.ktmTrackLine.lastIndexOf(2);
+        const sk = rules.skyparkOnKtmRoute; const k2i = sk ? this.ktmTrackLine.indexOf(sk) : -1, k2j = sk ? this.ktmTrackLine.lastIndexOf(sk) : -1;
         if (k2i >= 0) {
           const tr = this.ktmTracks[k2i], other = k2j !== k2i ? this.ktmTracks[k2j] : null;
           const mid = (tr.inStart + tr.inEnd) >> 1; let side = 1;
@@ -244,12 +276,11 @@ export class MapModel {
       this.group.add(grp);
     }
     // trains: LRT on the viaduct; KTM Komuter on both lines (one instanced set, livery stripe per line)
-    this.trains = new Trains(this.lrtTracks, H);
-    this.ktmTrains = new Trains(this.ktmTracks, H, KTM_TRAIN);
-    this.group.add(this.trains.group, this.ktmTrains.group);
+    if (this.lrtTracks.length) { this.trains = new Trains(this.lrtTracks, H); this.group.add(this.trains.group); }
+    if (this.ktmTracks.length) { this.ktmTrains = new Trains(this.ktmTracks, H, KTM_TRAIN); this.group.add(this.ktmTrains.group); }
 
     // landmark blocks whose footprint centroid lies outside the study square (full OSM outline, not clipped)
-    for (const l of landmarks.filter((l) => !l.buildingId)) {
+    for (const l of landmarks.filter((l) => !l.buildingId && !l.inStudyArea)) {
       for (const poly of l.polygons) {
         const shape = new THREE.Shape(poly.outer.map(([x, n]) => new THREE.Vector2(x, n)));
         for (const hole of poly.holes) shape.holes.push(new THREE.Path(hole.map(([x, n]) => new THREE.Vector2(x, n))));
@@ -296,11 +327,99 @@ export class MapModel {
     this.walker.renderOrder = 12; this.group.add(this.walker);
 
     // precinct outline (KL Eco City; the Mid Valley City polygon is not drawn: the Mid Valley precinct is the Megamall itself)
-    for (const p of areas.precincts.filter((p) => p.name === 'KL Eco City')) {
+    for (const p of areas.precincts.filter((p) => rules.precinctOutlines?.includes(p.name ?? ''))) {
       const l = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(p.ring.map(([x, n]) => v3(x, n, 0.5))), this.mats.precinct);
       l.computeLineDistances(); this.precinctGroup.add(l);
     }
     this.group.add(this.precinctGroup);
+    this.buildUnderground();
+    this.buildFacilities();
+  }
+
+  // ---------- facilities ----------
+  /** Markers at facility points: a tall pin for hotels (on top of the building they are in), car-park footprints and
+   *  entrances, bus-stop posts and station entrances. Built only for the types the area has; shown with mode.facilities. */
+  private buildFacilities() {
+    const f = this.area.facilities; if (!f) return;
+    const any = f.hotels.length + f.parking.length + f.parkingEntrances.length + f.busStops.length + f.stationEntrances.length;
+    if (!any) return;
+    const lam = () => new THREE.MeshLambertMaterial();
+    const fm = this.facMats = { hotel: lam(), parking: lam(), parkingArea: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }), bus: lam(), entrance: lam(), focus: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9 }) };
+    const inside = (p: XY, ring: XY[]) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) c = !c; } return c; };
+    const roofAt = (c: XY) => Math.max(0, ...this.area.buildings.filter((b) => Math.abs(b.c[0] - c[0]) < 120 && Math.abs(b.c[1] - c[1]) < 120 && inside(c, b.ring)).map((b) => b.height));
+    const pins = (items: { id: string; c: XY }[], geo: THREE.BufferGeometry, m: THREE.Material, top: (c: XY) => number, scaleY: (c: XY) => number) => {
+      const inst = new THREE.InstancedMesh(geo, m, Math.max(1, items.length)); const mx = new THREE.Matrix4();
+      items.forEach((it, i) => { const y = top(it.c); const sy = scaleY(it.c); mx.compose(v3(it.c[0], it.c[1], y + sy / 2), new THREE.Quaternion(), new THREE.Vector3(1, sy, 1)); inst.setMatrixAt(i, mx); this.facilityAt.set(it.id, v3(it.c[0], it.c[1], y + sy)); });
+      inst.count = items.length; inst.castShadow = false; inst.renderOrder = 8; return inst;
+    };
+    const unitBox = (w: number) => new THREE.BoxGeometry(w, 1, w);
+    if (f.hotels.length) { const g = new THREE.Group(); g.add(pins(f.hotels, unitBox(5), fm.hotel, (c) => roofAt(c), () => 16)); this.facGroups.hotels = g; }
+    if (f.parking.length || f.parkingEntrances.length) {
+      const g = new THREE.Group();
+      const rings = f.parking.filter((p) => p.ring && p.ring.length >= 3 && !p.building);
+      if (rings.length) { const mesh = new THREE.Mesh(merge(rings.map((p) => flatShape(p.ring!, 0.3))), fm.parkingArea); mesh.renderOrder = 3; g.add(mesh); }
+      for (const p of f.parking) this.facilityAt.set(p.id, v3(p.c[0], p.c[1], (p.building ? roofAt(p.c) : 0) + 4));
+      if (f.parkingEntrances.length) g.add(pins(f.parkingEntrances, unitBox(3), fm.parking, () => 0, () => 4));
+      this.facGroups.parking = g;
+    }
+    if (f.busStops.length) { const g = new THREE.Group(); g.add(pins(f.busStops, new THREE.CylinderGeometry(1.6, 1.6, 1, 12), fm.bus, () => 0, () => 7)); this.facGroups.bus = g; }
+    if (f.stationEntrances.length) { const g = new THREE.Group(); g.add(pins(f.stationEntrances, unitBox(3.2), fm.entrance, () => 0, () => 5)); this.facGroups.entrances = g; }
+    for (const g of Object.values(this.facGroups)) { g.visible = false; this.group.add(g); }
+    this.facFocus = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 12), fm.focus); this.facFocus.visible = false; this.facFocus.renderOrder = 13; this.group.add(this.facFocus);
+  }
+
+  // ---------- underground view ----------
+  /** Tunnels at their estimated depth (undergroundDepth), underground stations, section walls along the study-square
+   *  edge and the trains in the tunnels. Built only for what the area has; shown with mode.underground. */
+  private buildUnderground() {
+    const { lines, stations, station } = this.area;
+    const H = this.area.meta.halfSizeM;
+    const rules = this.area.rules.model ?? {};
+    const tunnelRails = lines.rails.filter((r) => (r.tunnel || r.layer < 0) && r.line !== 'other');
+    const tunnelRoads = lines.roads.filter((r) => r.tunnel || r.layer < 0);
+    const tunnelFoot = lines.footways.filter((f) => f.layer < 0);
+    const stops = Object.values(rules.undergroundStops ?? {}).filter((x): x is string => !!x);
+    const underStations = stations.filter((st) => st.layer < 0 || (st.ref && stops.includes(st.ref)));
+    if (!tunnelRails.length && !tunnelRoads.length && !tunnelFoot.length) return;
+    const mat = () => new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
+    const um = this.underMats = { rail: new Map<RailLineId, THREE.MeshBasicMaterial>(), road: mat(), foot: mat(), station: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false }), wall: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.18, depthWrite: false }) };
+    let deepest = 0;
+    const at = (pts: XY[], layer: number) => { const d = undergroundDepth(layer); deepest = Math.max(deepest, d); return pts.map(([x, n]) => v3(x, n, -d)); };
+    // rail tunnels, one mesh per line in the line colour
+    for (const line of [...new Set(tunnelRails.map((r) => r.line))]) {
+      const m = mat(); um.rail.set(line, m);
+      const mesh = new THREE.Mesh(merge(tunnelRails.filter((r) => r.line === line).map((r) => ribbon(at(r.pts, r.layer), 5))), m); mesh.renderOrder = 6;
+      this.underGroup.add(mesh);
+    }
+    if (tunnelRoads.length) { const mesh = new THREE.Mesh(merge(tunnelRoads.map((r) => ribbon(at(r.pts, r.layer), r.w))), um.road); mesh.renderOrder = 5; this.underGroup.add(mesh); }
+    if (tunnelFoot.length) { const mesh = new THREE.Mesh(merge(tunnelFoot.map((f) => ribbon(at(f.pts, f.layer), 3))), um.foot); mesh.renderOrder = 5; this.underGroup.add(mesh); }
+    // underground stations: a box at the depth of the nearest tunnel track, and a shaft up to the street
+    for (const st of underStations) {
+      let best = Infinity, d = undergroundDepth(st.layer);
+      for (const r of tunnelRails) for (const [x, n] of r.pts) { const k = Math.hypot(x - st.c[0], n - st.c[1]); if (k < best) { best = k; d = undergroundDepth(r.layer); } }
+      const box = new THREE.Mesh(new THREE.BoxGeometry(18, 7, 18), um.station); box.position.copy(v3(st.c[0], st.c[1], -d + 2)); box.renderOrder = 7;
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(2, d, 2), um.station); shaft.position.copy(v3(st.c[0], st.c[1], -d / 2));
+      this.underGroup.add(box, shaft);
+    }
+    // section walls along the study-square edge, down to just below the deepest way
+    const D = deepest + 4;
+    for (const [x0, n0, x1, n1] of [[-H, -H, H, -H], [H, -H, H, H], [H, H, -H, H], [-H, H, -H, -H]]) {
+      const g = new THREE.PlaneGeometry(Math.hypot(x1 - x0, n1 - n0), D); const wall = new THREE.Mesh(g, um.wall);
+      wall.position.copy(v3((x0 + x1) / 2, (n0 + n1) / 2, -D / 2)); wall.rotation.y = Math.atan2(-(n1 - n0), x1 - x0) * -1; wall.renderOrder = 4;
+      this.underGroup.add(wall);
+    }
+    // trains in the tunnels: per line, the tunnel ways chained per direction, stopping at the line's station
+    for (const [line, ref] of Object.entries(rules.undergroundStops ?? {}) as [RailLineId, string][]) {
+      const ways = tunnelRails.filter((r) => r.line === line);
+      const chains = orientLeftHand(chainWaysAnyDir(ways).map((c) => c.chain));
+      const st = station(ref);
+      const tracks = chains.map((ch) => buildTrack(ch, (r) => -undergroundDepth(r.layer), st ? st.c : null, { smoothY: 8 }));
+      if (!tracks.length) continue;
+      const trains = new Trains(tracks, H, line === 'py' ? MRT_TRAIN : TRAIN);
+      this.underTrains.push({ line, tracks, trains }); this.underGroup.add(trains.group);
+    }
+    this.underGroup.visible = false;
+    this.group.add(this.underGroup);
   }
 
   // ---------- shade sampling (chapter 07) ----------
@@ -337,33 +456,44 @@ export class MapModel {
     m.fade.color = col(p.buildingContext); m.xray.color = col(p.building);
     m.pier.color = col(p.buildingContext);
     m.src.osm.color = col(p.heightSource.osm); m.src.levels.color = col(p.heightSource.levels); m.src.estimate.color = col(p.heightSource.estimate); m.src.cited.color = col(p.heightSource.cited);
-    m.zone.eco.color = col(p.zone.eco); m.zone.gardens.color = col(p.zone.gardens); m.zone.midvalley.color = col(p.zone.midvalley);
+    for (const [z, zm] of Object.entries(m.zone)) zm.color = col(p.zone[z] ?? p.buildingContext);
     m.rainCovered.color = col(p.covered); m.rainOpen.color = col(p.open); m.walker.color = col(p.route); m.dots.color = new THREE.Color(1, 1, 1);
     const edge = col(p.edge);
     for (const e of [m.edgeKey, m.edgeContext, m.edgeFade, m.precinct, m.frame]) e.color = edge;
     m.edgeKey.opacity = p.edgeOpacity;
     m.edgeContext.opacity = p.edgeContextOpacity;
+    m.rail.py.color = col(p.rail.py); m.rail.mr.color = col(p.rail.mr);
     m.rail.lrt.color = col(p.rail.lrt); m.rail.ktm.color = col(p.rail.ktm1); m.rail.ktm2.color = col(p.rail.ktm2); m.rail.erl.color = col(p.rail.erl); this.erlColors.base.copy(col(p.rail.erl)); this.erlColors.klia.copy(col(p.rail.kliaTransit)); if (this.mode) m.rail.erl.color.copy(this.mode.airport ? this.erlColors.klia : this.erlColors.base); if (this.skypark) (this.skypark.material as THREE.MeshBasicMaterial).color = col(p.rail.skypark);
     m.foot.color = col(p.footway); m.footBridge.color = col(p.footbridge);
     m.landmark.color = col(p.landmark); m.podium.color = col(p.podium);
-    this.trains.setColors(col(p.train.body), col(p.train.window), col(p.train.accent), edge, p.edgeOpacity * 0.85);
-    this.ktmTrains.setTrackColors(this.ktmTrackLine.map((l) => col(l === 1 ? p.rail.ktm1 : p.rail.ktm2)));
-    this.ktmTrains.setColors(col(p.train.body), col(p.train.window), col(p.train.accent), edge, p.edgeOpacity * 0.85);
+    this.trains?.setColors(col(p.train.body), col(p.train.window), col(p.train.accent), edge, p.edgeOpacity * 0.85);
+    this.ktmTrains?.setTrackColors(this.ktmTrackLine.map((l) => col(l === 1 ? p.rail.ktm1 : p.rail.ktm2)));
+    this.ktmTrains?.setColors(col(p.train.body), col(p.train.window), col(p.train.accent), edge, p.edgeOpacity * 0.85);
     m.route.color = col(p.route); m.routeDim.color = col(p.route);
+    if (this.underMats) {
+      const um = this.underMats; const lineCol: Partial<Record<RailLineId, string>> = { lrt: p.rail.lrt, ktm: p.rail.ktm1, erl: p.rail.erl, py: p.rail.py, mr: p.rail.mr };
+      for (const [line, lm] of um.rail) lm.color = col(lineCol[line] ?? p.edge);
+      um.road.color = col(p.roadMajor); um.foot.color = col(p.footbridge); um.station.color = col(p.edge); um.wall.color = col(p.underground);
+      for (const ut of this.underTrains) ut.trains.setColors(col(p.train.body), col(p.train.window), col(lineCol[ut.line] ?? p.train.accent), edge, p.edgeOpacity * 0.85);
+    }
+    if (this.facMats) {
+      const fm = this.facMats; fm.hotel.color = col(p.facility.hotel); fm.parking.color = col(p.facility.parking); fm.parkingArea.color = col(p.facility.parking);
+      fm.bus.color = col(p.facility.bus); fm.entrance.color = col(p.facility.entrance); fm.focus.color = col(p.route);
+    }
     this.hemiBase = p.light.hemi; this.hemi.groundColor = col(p.light.hemiGround);
     this.sunBase = p.light.sun;
     this.setMode({});
   }
 
   // ---------- modes ----------
-  setMode(patch: Partial<SceneMode>) {
+  setMode(patch: ModePatch) {
     const prev = this.mode;
-    this.mode = { ...this.mode, ...patch, rails: { ...this.mode.rails, ...(patch.rails || {}) } };
+    this.mode = { ...this.mode, ...patch, rails: { ...this.mode.rails, ...(patch.rails || {}) }, facilities: { ...this.mode.facilities, ...(patch.facilities || {}) } };
     const md = this.mode; const m = this.mats;
     for (const b of this.bmeshes) {
       let mat: THREE.Material = b.key ? m.build : m.context; let em: THREE.LineBasicMaterial = b.key ? m.edgeKey : m.edgeContext;
       if (md.buildingStyle === 'source') { mat = m.src[b.data.heightSource]; em = m.edgeKey; }
-      else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] : m.context; em = b.data.zone ? m.edgeKey : m.edgeContext; }
+      else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] ?? m.context : m.context; em = b.data.zone ? m.edgeKey : m.edgeContext; }
       else if (md.buildingStyle === 'threshold') { const on = b.data.height >= md.threshold; mat = on ? m.build : m.fade; em = on ? m.edgeKey : m.edgeFade; }
       if (md.landmarks && b.data.landmark) { mat = m.landmark; em = m.edgeKey; }
       if (md.landmarks && b.data.podiumFor) { mat = m.podium; em = m.edgeKey; }
@@ -371,7 +501,7 @@ export class MapModel {
       b.mesh.material = mat; b.edges.material = em;
       b.mesh.castShadow = !md.xray;
     }
-    for (const line of ['lrt', 'ktm', 'erl'] as const) {
+    for (const line of ['lrt', 'ktm', 'erl', 'py', 'mr'] as const) {
       const st = md.rails[line]; const grp = this.railGroups[line];
       grp.visible = st !== 'hidden';
       m.rail[line].opacity = st === 'highlight' ? 1 : 0.35;
@@ -386,6 +516,7 @@ export class MapModel {
     const plain = md.routeStyle === 'plain';
     this.routeMeshes.forEach((r, i) => { r.visible = plain && md.routeSet === 'legs'; r.material = md.routeFocus == null || md.routeFocus === i ? m.route : m.routeDim; });
     for (const [id, r] of this.walkMeshes) r.visible = plain && md.routeSet === 'walks' && (md.walkFocus == null || md.walkFocus === id);
+    const { walks, routes } = this.area;
     for (const [id, g] of this.rainGroups) g.visible = !plain && md.routeSet !== 'none' && (md.routeSet === 'walks' ? walks.some((w) => w.id === id) && (md.walkFocus == null || md.walkFocus === id) : routes.some((w) => w.id === id));
     this.walker.visible = plain && md.routeSet === 'walks' && md.walkFocus != null;
     if (md.routeSet === 'legs' && prev.routeSet !== 'legs') this.routeDrawStart = performance.now();
@@ -405,8 +536,18 @@ export class MapModel {
     m.water.color = col(md.muteWater ? this.palette.waterMuted : this.palette.water);
     this.precinctGroup.visible = md.precincts;
     this.landmarkGroup.visible = md.landmarks;
-    this.trains.group.visible = this.trainsOn && md.rails.lrt !== 'hidden';
-    this.ktmTrains.group.visible = this.trainsOn && md.rails.ktm !== 'hidden';
+    if (this.trains) this.trains.group.visible = this.trainsOn && md.rails.lrt !== 'hidden';
+    if (this.ktmTrains) this.ktmTrains.group.visible = this.trainsOn && md.rails.ktm !== 'hidden';
+    // underground view: ground layers turn see-through so the tunnels show beneath
+    const ug = md.underground;
+    for (const mt of [m.ground, m.road, m.roadMajor, m.water, m.green]) {
+      if (mt.transparent !== ug) { mt.transparent = ug; mt.depthWrite = !ug; mt.needsUpdate = true; }
+      mt.opacity = ug ? (mt === m.ground ? 0.22 : 0.4) : 1;
+    }
+    this.underGroup.visible = ug;
+    for (const [k, g] of Object.entries(this.facGroups) as [keyof SceneMode['facilities'], THREE.Group][]) g.visible = md.facilities[k];
+    if (this.facFocus) { const at = md.facilityFocus ? this.facilityAt.get(md.facilityFocus) : null; this.facFocus.visible = !!at; if (at) this.facFocus.position.copy(at).add(new THREE.Vector3(0, 6, 0)); }
+    for (const ut of this.underTrains) ut.trains.group.visible = ug && this.trainsOn && md.rails[ut.line as RailGroupId] !== 'hidden';
   }
 
   // ---------- trains ----------
@@ -420,7 +561,8 @@ export class MapModel {
     // trains: run on a clamped clock that only advances while not paused;
     // with reduced motion they are shown static (one train standing at KJ17, one at each KTM station)
     const reduced = !!opts.reducedMotion;
-    for (const tr of [this.trains, this.ktmTrains]) {
+    for (const tr of [this.trains, this.ktmTrains, ...this.underTrains.map((u) => u.trains)]) {
+      if (!tr) continue;
       if (reduced) tr.freeze(tr.reducedMotionClock());
       else if (!opts.paused) tr.step(dt);
       tr.update();

@@ -1,0 +1,28 @@
+[out:json][timeout:120];
+(
+  way["building"](3.15091,101.709602,3.16169,101.720398);
+  relation["building"](3.15091,101.709602,3.16169,101.720398);
+  way["building:part"](3.15091,101.709602,3.16169,101.720398);
+  way["railway"~"^(light_rail|rail|subway|monorail|platform)$"](3.15091,101.709602,3.16169,101.720398);
+  node["railway"~"^(station|halt|stop|subway_entrance|train_station_entrance)$"](3.15091,101.709602,3.16169,101.720398);
+  way["railway"="station"](3.15091,101.709602,3.16169,101.720398);
+  node["public_transport"="station"](3.15091,101.709602,3.16169,101.720398);
+  way["public_transport"="station"](3.15091,101.709602,3.16169,101.720398);
+  way["waterway"~"^(river|canal|stream)$"](3.15091,101.709602,3.16169,101.720398);
+  way["natural"="water"](3.15091,101.709602,3.16169,101.720398);
+  relation["natural"="water"](3.15091,101.709602,3.16169,101.720398);
+  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link|residential|unclassified|service)$"](3.15091,101.709602,3.16169,101.720398);
+  way["highway"~"^(footway|pedestrian|steps|path|corridor)$"](3.15091,101.709602,3.16169,101.720398);
+  way["man_made"="bridge"](3.15091,101.709602,3.16169,101.720398);
+  way["leisure"~"^(park|garden)$"](3.15091,101.709602,3.16169,101.720398);
+  way["landuse"~"^(grass|recreation_ground)$"](3.15091,101.709602,3.16169,101.720398);
+  way["landuse"]["name"](3.15091,101.709602,3.16169,101.720398);
+  relation["landuse"]["name"](3.15091,101.709602,3.16169,101.720398);
+  way["amenity"="parking"]["building"!~"."](3.15091,101.709602,3.16169,101.720398);
+  nwr["amenity"="parking"](3.15091,101.709602,3.16169,101.720398);
+  node["amenity"="parking_entrance"](3.15091,101.709602,3.16169,101.720398);
+  nwr["tourism"~"^(hotel|apartment|hostel|guest_house|motel)$"](3.15091,101.709602,3.16169,101.720398);
+  node["highway"="bus_stop"](3.15091,101.709602,3.16169,101.720398);
+  node["public_transport"="platform"]["bus"="yes"](3.15091,101.709602,3.16169,101.720398);
+);
+out body geom;

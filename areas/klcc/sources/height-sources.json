@@ -1,0 +1,104 @@
+{
+  "fetched": "2026-10-12",
+  "storeyHeights": {
+    "default": 3.5,
+    "mall": 5.0
+  },
+  "notes": "Heights from the Wikipedia list of tallest buildings in Kuala Lumpur (standard height measurement: spires and architectural details included, antennas excluded; the page cites CTBUH for its rankings), fetched on the date above. Matched to OSM buildings by OSM name. Where a building is drawn as OSM building:parts (the Petronas Towers), the parts keep their own OSM heights and the cited value is recorded on the outline. Stated floor counts are converted with storeyHeights (3.5 m default; 5.0 m for mall retail floors, the same assumption as for the Mid Valley malls).",
+  "buildings": [
+    {
+      "osmName": "Menara Berkembar Petronas",
+      "value": 451.9,
+      "unit": "m",
+      "floors": 88,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Petronas Towers 1 and 2 (1998), each 451.9 m. Drawn from 25 OSM building:parts whose tallest tips are tagged 452 m.",
+      "applyToUntaggedParts": true
+    },
+    {
+      "osmName": "Four Seasons Place Kuala Lumpur",
+      "value": 343,
+      "unit": "m",
+      "floors": 74,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Four Seasons Place (2018). OSM height tag 342.5 m."
+    },
+    {
+      "osmName": "Menara Ilham",
+      "value": 274,
+      "unit": "m",
+      "floors": 58,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Ilham Tower (2015). OSM height tag 274 m. Drawn as OSM building:parts; the cited value is recorded on the outline.",
+      "applyToUntaggedParts": true
+    },
+    {
+      "osmName": "Menara 3 Petronas",
+      "value": 267,
+      "unit": "m",
+      "floors": 60,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Petronas Tower 3 (2012). OSM height tag 267 m."
+    },
+    {
+      "osmName": "Equatorial Plaza",
+      "value": 229.7,
+      "unit": "m",
+      "floors": 55,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Equatorial Plaza (2018). OSM height tag 230 m."
+    },
+    {
+      "osmName": "Menara Maxis",
+      "value": 212,
+      "unit": "m",
+      "floors": 49,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Menara Maxis (1998). OSM height tag 150 m. Drawn as OSM building:parts; the cited value is recorded on the outline.",
+      "applyToUntaggedParts": true
+    },
+    {
+      "osmName": "Menara AmBank",
+      "value": 210,
+      "unit": "m",
+      "floors": 50,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "AmBank Tower (1998). OSM height tag 210 m."
+    },
+    {
+      "osmName": "Menara Citibank",
+      "value": 190.2,
+      "unit": "m",
+      "floors": 50,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Citibank Tower (1995). OSM height tag 190 m."
+    },
+    {
+      "osmName": "Menara PNB",
+      "value": 171,
+      "unit": "m",
+      "floors": 45,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Menara PNB (1985). OSM height tag 171 m."
+    },
+    {
+      "osmName": "Plaza Ombak KLCC",
+      "value": 6,
+      "unit": "floors",
+      "floors": 6,
+      "use": "mall",
+      "publisher": "Wikipedia – Ombak KLCC",
+      "url": "https://en.wikipedia.org/wiki/Ombak_KLCC",
+      "note": "\"6 retail levels, 3 basement levels\" (opened 21 August 2026) × 5.0 m mall storey (assumption). OSM building:levels 5."
+    }
+  ]
+}

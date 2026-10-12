@@ -11,7 +11,7 @@ export interface Palette {
   edge: string; edgeOpacity: number; edgeContextOpacity: number;
   heightSource: Record<HeightSource, string>;
   zone: Record<Zone, string>;
-  rail: { lrt: string; ktm1: string; ktm2: string; erl: string; kliaTransit: string; skypark: string };
+  rail: { lrt: string; ktm1: string; ktm2: string; erl: string; kliaTransit: string; skypark: string; py: string; mr: string };
   footway: string; footbridge: string;
   route: string; covered: string; open: string;
   /** shade sample dots: in sun / in shade */
@@ -19,9 +19,13 @@ export interface Palette {
   landmark: string; podium: string;
   train: { body: string; window: string; accent: string };
   light: { hemi: number; hemiGround: string; sun: number };
+  /** section walls of the underground view */
+  underground: string;
+  /** facility markers: hotels, car parks, bus stops, station entrances */
+  facility: { hotel: string; parking: string; bus: string; entrance: string };
 }
 
-const rail = { lrt: LINE_COLORS.lrt, ktm1: LINE_COLORS.ktm1, ktm2: LINE_COLORS.ktm2, kliaTransit: LINE_COLORS.kliaTransit, skypark: LINE_COLORS.skypark };
+const rail = { lrt: LINE_COLORS.lrt, ktm1: LINE_COLORS.ktm1, ktm2: LINE_COLORS.ktm2, kliaTransit: LINE_COLORS.kliaTransit, skypark: LINE_COLORS.skypark, py: LINE_COLORS.py, mr: LINE_COLORS.mr };
 
 /** The infographic's light theme. */
 export const LIGHT_PALETTE: Palette = {
@@ -30,7 +34,7 @@ export const LIGHT_PALETTE: Palette = {
   building: '#ffffff', buildingContext: '#ecece8',
   edge: '#161616', edgeOpacity: 0.55, edgeContextOpacity: 0.22,
   heightSource: { osm: '#3a3a38', levels: '#9a9a96', estimate: '#e9e9e5', cited: '#6a4fc0' },
-  zone: { eco: '#d49a92', gardens: '#d6bf8c', midvalley: '#9aa6bd' },
+  zone: { eco: '#d49a92', gardens: '#d6bf8c', midvalley: '#9aa6bd', towers: '#9aa6bd', suria: '#d6bf8c', convention: '#d49a92', ombak: '#8fb39a' },
   rail: { ...rail, erl: '#8d8d8a' },
   footway: '#8d8d8a', footbridge: '#161616',
   route: '#e2552f', covered: '#1b7fa6', open: '#8e8e88',
@@ -38,6 +42,8 @@ export const LIGHT_PALETTE: Palette = {
   landmark: '#4a4743', podium: '#d3cdc0',
   train: { body: '#f4f3ef', window: '#7d8791', accent: LINE_COLORS.lrt },
   light: { hemi: 2.4, hemiGround: '#bdbdb8', sun: 1.5 },
+  underground: '#8a6f55',
+  facility: { hotel: '#7a4fb0', parking: '#2f6fd0', bus: '#2e9e5b', entrance: '#161616' },
 };
 
 /** The infographic's dark theme. */
@@ -47,7 +53,7 @@ export const DARK_PALETTE: Palette = {
   building: '#3a3a38', buildingContext: '#262625',
   edge: '#f0f0ec', edgeOpacity: 0.5, edgeContextOpacity: 0.16,
   heightSource: { osm: '#f0f0ec', levels: '#8a8a85', estimate: '#2e2e2c', cited: '#a68cf5' },
-  zone: { eco: '#a86e67', gardens: '#a08a58', midvalley: '#6b7891' },
+  zone: { eco: '#a86e67', gardens: '#a08a58', midvalley: '#6b7891', towers: '#6b7891', suria: '#a08a58', convention: '#a86e67', ombak: '#5f8a6c' },
   rail: { ...rail, erl: '#77776f' },
   footway: '#85857f', footbridge: '#ededea',
   route: '#ff7a4d', covered: '#4cc3e0', open: '#77776f',
@@ -55,4 +61,6 @@ export const DARK_PALETTE: Palette = {
   landmark: '#e6e0cf', podium: '#57534b',
   train: { body: '#a9a8a2', window: '#3b4048', accent: LINE_COLORS.lrt },
   light: { hemi: 1.6, hemiGround: '#202020', sun: 1.1 },
+  underground: '#6b5644',
+  facility: { hotel: '#b28ae6', parking: '#6ea2f0', bus: '#5fd08e', entrance: '#ededea' },
 };

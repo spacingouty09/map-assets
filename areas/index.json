@@ -1,0 +1,58 @@
+[
+ {
+  "id": "klcc",
+  "name": "KLCC",
+  "kind": "signature",
+  "summary": "Kuala Lumpur City Centre: the Petronas Twin Towers, Suria KLCC, KLCC Park, the KL Convention Centre and Ombak KLCC, around KLCC LRT (KJ10, Kelana Jaya Line) and Persiaran KLCC MRT (PY21, Putrajaya Line).",
+  "center": {
+   "lat": 3.1563,
+   "lon": 101.715
+  },
+  "halfSizeM": 600,
+  "bbox": {
+   "south": 3.15091,
+   "west": 101.709602,
+   "north": 3.16169,
+   "east": 101.720398
+  },
+  "stations": [
+   "KJ10",
+   "KJ9",
+   "MR7",
+   "PY20",
+   "PY21",
+   "PY22"
+  ],
+  "lines": [
+   "lrt",
+   "mr",
+   "py"
+  ]
+ },
+ {
+  "id": "klec-midvalley",
+  "name": "KL Eco City – Mid Valley",
+  "kind": "signature",
+  "summary": "The rail-and-mall cluster on both banks of the Klang River: KL Eco City, The Gardens Mall and Mid Valley Megamall, around Abdullah Hukum (LRT + KTM) and Mid Valley KTM.",
+  "center": {
+   "lat": 3.118,
+   "lon": 101.6758
+  },
+  "halfSizeM": 500,
+  "bbox": {
+   "south": 3.113508,
+   "west": 101.671302,
+   "north": 3.122492,
+   "east": 101.680298
+  },
+  "stations": [
+   "KB01",
+   "KJ17"
+  ],
+  "lines": [
+   "erl",
+   "ktm",
+   "lrt"
+  ]
+ }
+]

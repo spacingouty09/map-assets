@@ -1,0 +1,42 @@
+{
+  "precincts": ["KL Eco City", "Mid Valley City"],
+  "zones": [
+    { "id": "eco", "priority": 2, "precinct": "KL Eco City" },
+    { "id": "gardens", "priority": 1, "names": ["The Gardens Mall", "The Gardens North Tower", "The Gardens South Tower", "St. Giles The Gardens Residences", "The Gardens Hotel", "The Gardens Residences"] },
+    { "id": "midvalley", "priority": 3, "names": ["Mid Valley Megamall"] }
+  ],
+  "zoneNotes": "Rule (chapter 01 Landmarks): (1) The Gardens = buildings named in its list, or parts of an outline with one of those names (the Gardens towers and St. Giles residences are mapped as parts of the 'The Gardens Mall' outline); (2) KL Eco City = remaining buildings whose centroid lies in the OSM landuse polygon 'KL Eco City'; (3) Mid Valley Megamall = the OSM building 'Mid Valley Megamall' (way/922804567, building=mall) and the building:parts mapped inside that outline (v16: no longer the whole 'Mid Valley City' landuse polygon); everything else has no zone. Priority decides which rule wins; the list order is the order of meta.zones.",
+  "landmarks": [
+    { "name": "Masjid Jamek Abdullah Hukum", "kind": "mosque" },
+    { "name": "Masjid An Nur", "kind": "mosque" }
+  ],
+  "landmarkNotes": "Selected by OSM name (both are building=mosque; the Masjid Jamek way and the outer way of the An Nur relation carry amenity=place_of_worship + religion=muslim). Masjid An Nur (alt_name 'Balai Islam An-Nur TNB Bangsar') is the mosque in the TNB Bangsar compound; its footprint centroid lies ~10 m west of the study square, so it is not counted among the study-area blocks: it is kept as a landmark with its full, unclipped OSM outline.",
+  "podiums": {
+    "way/659511483": { "podium": "way/594385371", "name": "Parking Masjid Abdullah Hukum Bangsar", "nameSource": "local knowledge (project owner)" }
+  },
+  "podiumNotes": "Masjid Jamek Abdullah Hukum sits on the roof of the car park 'Parking Masjid Abdullah Hukum Bangsar' (local knowledge from the project owner). In OSM that car park is the unnamed building way/594385371 (building:levels = 5) whose outline encloses the mosque outline. The podium keeps its OSM levels height; the mosque's base = podium roof and its own placeholder height (estimate) is added on top. An OSM name on the podium, if ever tagged, wins. 2016 press reports (FMT / Bernama) describe 'a two-storey mosque on top of a seven level car park podium'; the model keeps the OSM level count.",
+  "anchors": [
+    { "id": "KJ17", "label": "Abdullah Hukum LRT (KJ17)", "station": "KJ17" },
+    { "id": "GARDENS", "label": "The Gardens Mall", "building": "The Gardens Mall" },
+    { "id": "MEGAMALL", "label": "Mid Valley Megamall", "building": "Mid Valley Megamall" },
+    { "id": "KB01", "label": "Mid Valley KTM (KB01)", "station": "KB01" },
+    { "id": "ECO", "labelTemplate": "KL Eco City ({name})", "closestOf": ["Mercu 2", "Mercu 3", "Mercu Aspire", "Strata Office"] }
+  ],
+  "anchorNotes": "ECO: the named KL Eco City tower whose footprint centre is closest to the pedestrian graph.",
+  "routes": [["leg1", "KJ17", "GARDENS"], ["leg2", "GARDENS", "MEGAMALL"], ["leg3", "MEGAMALL", "KB01"]],
+  "walks": [["w-kj17-megamall", "KJ17", "MEGAMALL"], ["w-kb01-gardens", "KB01", "GARDENS"], ["w-kj17-eco", "KJ17", "ECO"], ["w-megamall-gardens", "MEGAMALL", "GARDENS"]],
+  "routeWithin": [
+    { "key": "withinEcoCityM", "precinct": "KL Eco City" },
+    { "key": "withinMidValleyCityM", "precinct": "Mid Valley City" }
+  ],
+  "ktmRoutes": "raw/ktm-routes.json",
+  "ktmRouteNotes": "The Overpass pull has no route relations, so the KTM Komuter line of each track way was looked up once with the OSM API (GET /way/{id}/relations, 2026-10-10): ref 1 = Batu Caves–Pulau Sebang Line (KB codes), ref 2 = Tanjung Malim–Port Klang Line (KD codes). Ways in no Komuter relation (a crossover, short connectors) take the line of the nearest referenced KTM segment.",
+  "railLengths": ["lrt", "ktm", "erl"],
+  "model": {
+    "lrtStop": "KJ17",
+    "ktm": [{ "route": 1, "stop": "KB01" }, { "route": 2, "stop": "KD01" }],
+    "skyparkOnKtmRoute": 2,
+    "precinctOutlines": ["KL Eco City"]
+  },
+  "modelNotes": "lrtStop: where LRT trains stop. ktm: Komuter lines and their stop. skyparkOnKtmRoute: the suspended KL Sentral–Terminal Skypark Line (10) used the Line 2 tracks (OSM relations 9985660 / 8391024) and is drawn as a dashed overlay beside them. precinctOutlines: landuse precincts drawn as a dashed outline (the Mid Valley City polygon is not drawn: the Mid Valley precinct is the Megamall itself)."
+}

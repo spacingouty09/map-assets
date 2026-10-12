@@ -1,0 +1,9 @@
+{
+  "id": "klec-midvalley",
+  "name": "KL Eco City – Mid Valley",
+  "kind": "signature",
+  "summary": "The rail-and-mall cluster on both banks of the Klang River: KL Eco City, The Gardens Mall and Mid Valley Megamall, around Abdullah Hukum (LRT + KTM) and Mid Valley KTM.",
+  "center": { "lat": 3.118, "lon": 101.6758 },
+  "halfSizeM": 500,
+  "notes": "Study area: ~1 km x 1 km centred between Abdullah Hukum LRT and Mid Valley KTM. Centre derived from Nominatim geocodes (2026-10-10) of the five named places."
+}

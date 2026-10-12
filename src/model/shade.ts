@@ -1,6 +1,6 @@
-// Sample points for the sidewalk-shade analysis (chapter 07).
+// Sample points for the sidewalk-shade analysis (chapter 07), per area (computed once per area, then cached).
 import * as THREE from 'three';
-import { lines, buildings, walks, routes, type XY, type Route } from '../data';
+import type { Area, XY, Route } from '../data';
 import { routeY } from './geometry';
 
 const STEP = 5; // metres between samples
@@ -14,8 +14,6 @@ const inside = (p: XY, ring: XY[]) => {
   }
   return c;
 };
-const bIdx = buildings.map((b) => { const xs = b.ring.map((p) => p[0]), ys = b.ring.map((p) => p[1]); return { ring: b.ring, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }; });
-const inBuilding = (p: XY) => bIdx.some((b) => p[0] >= b.x0 && p[0] <= b.x1 && p[1] >= b.y0 && p[1] <= b.y1 && inside(p, b.ring));
 
 /** Points every STEP metres along a polyline (centres of each STEP-long piece). */
 function along(pts: XY[], cb: (p: XY) => void) {
@@ -28,15 +26,21 @@ function along(pts: XY[], cb: (p: XY) => void) {
   }
 }
 
+const groundCache = new WeakMap<Area, THREE.Vector3[]>();
 /** Ground-level, open-air footway points (not bridges, not indoor/covered, not inside a building). */
-export const groundSamples: THREE.Vector3[] = (() => {
-  const out: THREE.Vector3[] = [];
-  for (const f of lines.footways) {
+export function groundSamples(area: Area): THREE.Vector3[] {
+  let out = groundCache.get(area);
+  if (out) return out;
+  const bIdx = area.buildings.map((b) => { const xs = b.ring.map((p) => p[0]), ys = b.ring.map((p) => p[1]); return { ring: b.ring, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }; });
+  const inBuilding = (p: XY) => bIdx.some((b) => p[0] >= b.x0 && p[0] <= b.x1 && p[1] >= b.y0 && p[1] <= b.y1 && inside(p, b.ring));
+  out = [];
+  for (const f of area.lines.footways) {
     if (f.bridge || f.sheltered || f.layer > 0 || f.layer < 0) continue;
-    along(f.pts, (p) => { if (!inBuilding(p)) out.push(new THREE.Vector3(p[0], EYE + 0.22, -p[1])); });
+    along(f.pts, (p) => { if (!inBuilding(p)) out!.push(new THREE.Vector3(p[0], EYE + 0.22, -p[1])); });
   }
+  groundCache.set(area, out);
   return out;
-})();
+}
 
 /** Exposed (not sheltered) parts of a route, sampled at their walking level. */
 export function routeSamples(r: Route): THREE.Vector3[] {
@@ -45,7 +49,17 @@ export function routeSamples(r: Route): THREE.Vector3[] {
   return out;
 }
 const exposed = (r: Route) => r.segments.filter((s) => !s.sheltered).reduce((a, s) => a + s.length, 0);
-export const routeSampleSets = [
-  ...(routes.length ? [{ id: 'legs', route: null as Route | null, pts: routes.flatMap(routeSamples), exposedM: Math.round(routes.reduce((a, r) => a + exposed(r), 0)) }] : []),
-  ...walks.map((w) => ({ id: w.id, route: w as Route | null, pts: routeSamples(w), exposedM: Math.round(exposed(w)) })),
-];
+export interface RouteSampleSet { id: string; route: Route | null; pts: THREE.Vector3[]; exposedM: number }
+const setsCache = new WeakMap<Area, RouteSampleSet[]>();
+/** One sample set for all route legs together ('legs'), then one per walk. */
+export function routeSampleSets(area: Area): RouteSampleSet[] {
+  let sets = setsCache.get(area);
+  if (sets) return sets;
+  const { routes, walks } = area;
+  sets = [
+    ...(routes.length ? [{ id: 'legs', route: null as Route | null, pts: routes.flatMap(routeSamples), exposedM: Math.round(routes.reduce((a, r) => a + exposed(r), 0)) }] : []),
+    ...walks.map((w) => ({ id: w.id, route: w as Route | null, pts: routeSamples(w), exposedM: Math.round(exposed(w)) })),
+  ];
+  setsCache.set(area, sets);
+  return sets;
+}
