@@ -2,8 +2,11 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
-## Unreleased (proposed v0.2.1: new spot; existing spots' data unchanged)
+## v0.2.1 (2026-10-13)
 
+A new spot and a base-map option; the API is unchanged and existing spots' data files are byte-for-byte the same as v0.2.0.
+
+- **Model: park paths (KLCC):** `rules.model.parkPaths` names green areas (by OSM name) whose ground-level paths are part of the base map, drawn in every view like the roads (faint in the underground view). KLCC lists KLCC Park, so its walkways and jogging track (94 OSM ways, about 6.9 km) show in every chapter. Mid Valley lists none and draws as before.
 - **New spot: Bukit Jalil Sports City** (`bukit-jalil`): Pavilion Bukit Jalil, the National Sports Complex (TM Stadium Nasional, Unifi Arena, the aquatic centre, hockey and squash venues), Bukit Jalil City and Bukit Jalil Recreational Park, around SP17 Bukit Jalil, SP19 Awan Besar and SP20 Muhibbah on the Sri Petaling Line (4). Cited heights for 7 buildings (3 of them planned towers under construction) and a cited `facts.json`.
 - **Pipeline (optional rules, no effect on existing spots):** `rules.railLines` (spot-specific line-name patterns, tried before the built-in list), `point` anchors (`{ lat, lon }`), and `near` zone rules (building types within a radius of a point). Duplicate zone ids in `rules.zones` are counted once.
 
