@@ -79,15 +79,17 @@ To change data or the model, follow [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Any Vite + TypeScript site works. The steps below are the setup [map-infographic](https://github.com/spacingouty09/map-infographic) uses.
 
-**1. Add the submodule and pin a release:**
+**1. Add the submodule and pin a release.** Use the latest release from [CHANGELOG.md](CHANGELOG.md) in place of `vX.Y.Z`. The repo is public, so no token or invite is needed, in CI either:
 
 ```bash
 git submodule add https://github.com/spacingouty09/map-assets.git map-assets
-git -C map-assets checkout v0.1.0
+git -C map-assets checkout vX.Y.Z
 npm install three@0.186.1 && npm install -D @types/three@0.186.0
 git add .gitmodules map-assets package.json package-lock.json
-git commit -m "Add map-assets v0.1.0"
+git commit -m "Add map-assets vX.Y.Z"
 ```
+
+In GitHub Actions, check out with `submodules: true` (`actions/checkout`).
 
 **2. Point `@map-assets` at it** and keep a single copy of three.js:
 

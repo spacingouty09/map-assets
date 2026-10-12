@@ -51,7 +51,13 @@ git commit -m "Heights: The Gardens towers from <publisher>"
 git push -u origin data/gardens-heights
 ```
 
-No write access? Fork the repo on GitHub, push the branch to your fork and open the pull request from there.
+No write access? Push to a fork instead (the GitHub CLI makes it and adds it as the `fork` remote), then open the pull request from it:
+
+```bash
+gh repo fork --remote --remote-name fork
+git push -u fork data/gardens-heights
+gh pr create --repo spacingouty09/map-assets   # or open the link that git push prints
+```
 
 Open the PR on GitHub (or `gh pr create`). In the description, list the sources (publisher, URL, date fetched) and attach a screenshot from `npm run example` if the model looks different. CI runs the type check, `data:check` and the example build.
 
@@ -59,27 +65,29 @@ Open the PR on GitHub (or `gh pr create`). In the description, list the sources 
 
 Versions while 0.x:
 
-- **Patch** (0.1.0 → 0.1.1): data fixes and new cited values; same API and data shape.
+- **Patch** (0.1.2 → 0.1.3): data fixes, new cited values, docs and tooling; same API and data shape.
 - **Minor** (0.1.x → 0.2.0): anything a website must adapt to: a renamed or removed export, a changed `SceneMode` / `Palette`, a changed JSON shape.
+
+Replace `vX.Y.Z` with the new version. Use an annotated tag (`-a`): websites' `npm run doctor` and `git submodule status` show its name.
 
 ```bash
 git switch main && git pull
-# bump "version" in package.json and add a CHANGELOG.md entry, then:
-git commit -am "Release v0.1.1"
-git tag v0.1.1
-git push && git push --tags
+# bump "version" in package.json (then npm install --package-lock-only) and add a CHANGELOG.md entry, then:
+git commit -am "Release vX.Y.Z"
+git tag -a vX.Y.Z -m "map-assets vX.Y.Z"
+git push && git push origin vX.Y.Z
 ```
 
 ## 6. Update a website
 
-In each website repo, when it is ready for the new map:
+In each website repo, when it is ready for the new map (replace `vX.Y.Z` with the release):
 
 ```bash
 git -C map-assets fetch --tags
-git -C map-assets checkout v0.1.1
+git -C map-assets checkout vX.Y.Z
 npm run doctor && npm run build       # and the website's own checks
 git add map-assets
-git commit -m "map-assets v0.1.1"
+git commit -m "map-assets vX.Y.Z"
 git push
 ```
 

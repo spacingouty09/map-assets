@@ -1,7 +1,7 @@
 {
   "name": "map-assets",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Shared map data, OSM pipeline and Three.js 3D model of the KL Eco City – Mid Valley rail-and-mall cluster, Kuala Lumpur",
   "repository": {

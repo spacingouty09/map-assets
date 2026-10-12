@@ -2,6 +2,13 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## v0.1.3 (2026-10-12)
+
+Docs only; data, API and model are unchanged from v0.1.2.
+
+- Contributors without write access: the fork route with `gh repo fork` in CONTRIBUTING.md § 4, and in AGENTS.md "First-time setup".
+- Release steps use annotated tags, and the how-to commands use `vX.Y.Z` in place of a fixed version, so they don't go stale.
+
 ## v0.1.2 (2026-10-12)
 
 Docs only; data, API and model are unchanged from v0.1.1.
