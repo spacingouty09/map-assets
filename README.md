@@ -37,7 +37,25 @@ Coordinates are metres in a local frame: `x` east and `y` north of the study-are
 
 ## Set up
 
-You need Node 22+ and access to this private repo (ask for an invite). If `git clone` asks for a password, run `gh auth login` (GitHub CLI) once, or use a personal access token.
+You need Node 22+ and access to this private repo (ask for an invite, then accept it on GitHub). If `git clone` asks for a password, run `gh auth login` and `gh auth setup-git` (GitHub CLI) once, or use a personal access token.
+
+### Quick start with an AI agent
+
+Copy one of these into your AI coding agent (Cursor, Grok, Claude Code, Codex…). It checks your access, clones, sets everything up and explains how to contribute.
+
+**Usual: the website with the map inside it** (you also need access to map-infographic). You see your map changes in a real site:
+
+```text
+Set me up to contribute to the KL Eco City – Mid Valley map project (private GitHub repos spacingouty09/map-infographic and its submodule spacingouty09/map-assets). 1) Check that I have git and Node 22+, and that git can reach both repos: `git ls-remote https://github.com/spacingouty09/map-infographic.git` and `git ls-remote https://github.com/spacingouty09/map-assets.git`. If anything fails, stop and tell me exactly what to do (usually: accept both repo invites on GitHub, then run `gh auth login` and `gh auth setup-git`). 2) Ask me which folder to use, then run `git clone --recurse-submodules https://github.com/spacingouty09/map-infographic.git` there. 3) Open the map-infographic folder and follow the "First-time setup" section of its AGENTS.md. If you can't run commands yourself, give them to me one at a time and wait for the output. Don't commit, push or open pull requests without asking me.
+```
+
+**Map only:**
+
+```text
+Set me up to contribute to the KL Eco City – Mid Valley shared map (private GitHub repo spacingouty09/map-assets). 1) Check that I have git and Node 22+, and that git can reach the repo: `git ls-remote https://github.com/spacingouty09/map-assets.git`. If that fails, stop and tell me exactly what to do (usually: accept the repo invite on GitHub, then run `gh auth login` and `gh auth setup-git`). 2) Ask me which folder to use, then run `git clone https://github.com/spacingouty09/map-assets.git` there. 3) Open the map-assets folder and follow the "First-time setup" section of its AGENTS.md. If you can't run commands yourself, give them to me one at a time and wait for the output. Don't commit, push or open pull requests without asking me.
+```
+
+### By hand
 
 ```bash
 git clone https://github.com/spacingouty09/map-assets.git

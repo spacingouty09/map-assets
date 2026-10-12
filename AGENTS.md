@@ -6,6 +6,20 @@ Instructions for AI coding tools (Cursor, Grok, Claude Code, Codex and others) a
 
 The shared map of the KL Eco City – Mid Valley rail-and-mall cluster: OpenStreetMap-derived data, the pipeline that builds it, cited sources, and a Three.js model built from it. Websites include this repo as a git submodule at `map-assets/` and import `@map-assets`. A change here reaches a website only when that website moves its submodule to a newer tag.
 
+## First-time setup
+
+When someone asks you to set them up (usually with the prompt in README, "Quick start with an AI agent"). If you can't run commands yourself, give them to the person one at a time and wait for the output.
+
+- **This folder is `<website>/map-assets/`** (inside a website checkout): set up from the website's AGENTS.md instead, and don't run `npm install` here.
+- **This is a standalone clone** (map work only):
+  1. `npm ci`
+  2. `npm run typecheck && npm run data:check`. Both must pass.
+  3. Start `npm run example`, leave it running, and give the person http://127.0.0.1:5174/ (the model on its own).
+  4. Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) and follow them from now on.
+  5. Tell them, in a few lines: what is in `data/` (generated), `sources/` (cited inputs) and `src/` (the model); a change goes branch → edit `sources/` or `pipeline/` → `npm run data:process && npm run data:check` → pull request → release tag → each website moves its pointer. Then ask what they want to work on.
+
+Don't commit, push, open pull requests or change global git settings without asking.
+
 ## Rules
 
 - **Never edit `data/` by hand.** It is generated. Change `sources/` or `pipeline/`, then run `npm run data:process`, and commit the source change and the regenerated `data/` together.
