@@ -1,7 +1,7 @@
 // Sample points for the sidewalk-shade analysis (chapter 07).
 import * as THREE from 'three';
-import { lines, buildings, walks, routes, type XY, type Route } from './data';
-import { World } from './scene';
+import { lines, buildings, walks, routes, type XY, type Route } from '../data';
+import { routeY } from './geometry';
 
 const STEP = 5; // metres between samples
 const EYE = 1.5; // metres above the walking surface
@@ -41,7 +41,7 @@ export const groundSamples: THREE.Vector3[] = (() => {
 /** Exposed (not sheltered) parts of a route, sampled at their walking level. */
 export function routeSamples(r: Route): THREE.Vector3[] {
   const out: THREE.Vector3[] = [];
-  for (const s of r.segments) if (!s.sheltered) along(s.pts, (p) => out.push(new THREE.Vector3(p[0], World.routeY(s.layer) + EYE, -p[1])));
+  for (const s of r.segments) if (!s.sheltered) along(s.pts, (p) => out.push(new THREE.Vector3(p[0], routeY(s.layer) + EYE, -p[1])));
   return out;
 }
 const exposed = (r: Route) => r.segments.filter((s) => !s.sheltered).reduce((a, s) => a + s.length, 0);

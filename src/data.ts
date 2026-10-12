@@ -1,13 +1,14 @@
 // Typed access to the processed OSM data plus statistics derived from it.
 // Every number shown in the UI should come from here (or a cited source).
-import metaJ from './data/meta.json';
-import buildingsJ from './data/buildings.json';
-import linesJ from './data/lines.json';
-import areasJ from './data/areas.json';
-import stationsJ from './data/stations.json';
-import routesJ from './data/routes.json';
-import namedJ from './data/named-outlines.json';
-import landmarksJ from './data/landmarks.json';
+import metaJ from '../data/meta.json';
+import buildingsJ from '../data/buildings.json';
+import linesJ from '../data/lines.json';
+import areasJ from '../data/areas.json';
+import stationsJ from '../data/stations.json';
+import routesJ from '../data/routes.json';
+import namedJ from '../data/named-outlines.json';
+import landmarksJ from '../data/landmarks.json';
+import climateJ from '../sources/climate.json';
 
 export type XY = [number, number];
 export type Zone = 'eco' | 'gardens' | 'midvalley';
@@ -112,5 +113,6 @@ export const stats = {
   fetchedDate: (meta.fetchedAt || '').slice(0, 10),
 };
 
-export const fmt = (n: number, d = 0) => n.toLocaleString('en-GB', { maximumFractionDigits: d, minimumFractionDigits: d });
+/** Cited monthly climate normals (sources/climate.json; publisher and URL inside). */
+export const climate = climateJ;
 

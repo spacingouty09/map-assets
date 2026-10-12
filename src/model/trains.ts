@@ -7,7 +7,7 @@
 // overlap. Rendering: instanced bodies / window bands / accent stripes plus one dynamic
 // LineSegments for the outlines; nothing is allocated per frame.
 import * as THREE from 'three';
-import type { Rail, XY } from './data';
+import type { Rail, XY } from '../data';
 
 export interface TrainSpec {
   carLen: number; carGap: number; carW: number; carH: number; floor: number; bogieInset: number; nose: number; // m

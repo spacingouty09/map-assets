@@ -1,7 +1,9 @@
 // Re-pull raw OpenStreetMap data for the study area from the Overpass API.
-// Usage: node scripts/fetch-osm.mjs   (then: node scripts/process-osm.mjs)
+// Usage: npm run data:fetch   (then: npm run data:process)
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { BBOX, USER_AGENT } from './config.mjs';
+
+const at = (p) => new URL(`../${p}`, import.meta.url);
 
 const ENDPOINT = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const b = `${BBOX.south},${BBOX.west},${BBOX.north},${BBOX.east}`;
@@ -28,8 +30,8 @@ const query = `[out:json][timeout:90];
 );
 out body geom;`;
 
-mkdirSync('raw', { recursive: true });
-writeFileSync('raw/overpass-query.overpassql', query);
+mkdirSync(at('raw'), { recursive: true });
+writeFileSync(at('raw/overpass-query.overpassql'), query);
 const ENDPOINTS = [ENDPOINT, 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 let res;
 for (let attempt = 0; attempt < 6; attempt++) {
@@ -51,5 +53,5 @@ if (!res || !res.ok) { console.error('Overpass failed after retries'); process.e
 const json = await res.json();
 json.fetched_at = new Date().toISOString();
 json.bbox = BBOX;
-writeFileSync('raw/overpass.json', JSON.stringify(json));
+writeFileSync(at('raw/overpass.json'), JSON.stringify(json));
 console.log('Saved raw/overpass.json with', json.elements.length, 'elements');

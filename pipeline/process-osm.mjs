@@ -1,10 +1,12 @@
-// Convert raw/overpass.json into compact local-metric JSON for the app (src/data/).
+// Convert raw/overpass.json into compact local-metric JSON for the model (data/).
 // Local frame: x = metres east, y = metres north of CENTER (equirectangular, fine for 1 km).
-// Usage: node scripts/process-osm.mjs
+// Usage: npm run data:process (paths are relative to the repo root, so it runs from any directory)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { CENTER, HALF_SIZE_M, BBOX } from './config.mjs';
 
-const raw = JSON.parse(readFileSync('raw/overpass.json', 'utf8'));
+const at = (p) => new URL(`../${p}`, import.meta.url);
+
+const raw = JSON.parse(readFileSync(at('raw/overpass.json'), 'utf8'));
 const R = 6378137;
 const K = Math.PI / 180;
 const cosLat = Math.cos(CENTER.lat * K);
@@ -175,8 +177,8 @@ for (const p of parts.filter((p) => !p.parent)) {
   pushB(p, pi, { part: true });
 }
 
-// ---------- cited heights (scripts/height-sources.json, see docs/height-sources.md) ----------
-const HS = JSON.parse(readFileSync('scripts/height-sources.json', 'utf8'));
+// ---------- cited heights (sources/height-sources.json, see docs/height-sources.md) ----------
+const HS = JSON.parse(readFileSync(at('sources/height-sources.json'), 'utf8'));
 const citedLog = [];
 const outlineCited = new Map();
 for (const src of HS.buildings) {
@@ -445,7 +447,7 @@ const walks = [['w-kj17-megamall', 'KJ17', 'MEGAMALL'], ['w-kb01-gardens', 'KB01
 // (KB codes), ref 2 = Tanjung Malim–Port Klang Line (KD codes). Ways in no Komuter relation (a crossover,
 // short connectors) take the line of the nearest referenced KTM segment.
 {
-  const KR = JSON.parse(readFileSync('raw/ktm-routes.json', 'utf8')).ways;
+  const KR = JSON.parse(readFileSync(at('raw/ktm-routes.json'), 'utf8')).ways;
   const ktm = rails.filter((r) => r.line === 'ktm');
   for (const r of ktm) { const refs = KR[r.id]?.refs ?? []; r.route = refs.length === 1 ? Number(refs[0]) : null; }
   const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; const u = L2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)) : 0; return Math.hypot(p[0] - a[0] - u * dx, p[1] - a[1] - u * dy); };
@@ -482,8 +484,8 @@ const meta = {
   exposedFootwayM: Math.round(footways.filter((f) => !f.sheltered).reduce((s, f) => s + len(f.pts), 0)),
   heightSourcesFetched: HS.fetched,
 };
-mkdirSync('src/data', { recursive: true });
-const w = (f, d) => writeFileSync(`src/data/${f}`, JSON.stringify(d));
+mkdirSync(at('data'), { recursive: true });
+const w = (f, d) => writeFileSync(at(`data/${f}`), JSON.stringify(d));
 w('meta.json', meta);
 w('buildings.json', buildings);
 w('landmarks.json', landmarks);

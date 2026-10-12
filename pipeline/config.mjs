@@ -11,4 +11,4 @@ export const BBOX = {
   north: +(CENTER.lat + dLat).toFixed(6),
   east: +(CENTER.lon + dLon).toFixed(6),
 };
-export const USER_AGENT = 'klec-midvalley-infographic/0.1 (local site-analysis prototype)';
+export const USER_AGENT = 'map-assets/0.1 (local site-analysis prototype)';

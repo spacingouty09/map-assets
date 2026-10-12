@@ -1,6 +1,6 @@
 # Height sources
 
-Fetched 2026-10-10. Applied by `scripts/process-osm.mjs` from `scripts/height-sources.json`; blocks get `heightSource: "cited"` and a `heightRef` object (value, unit, floors, storeyHeight, publisher, url, fetched, note).
+Fetched 2026-10-10. Applied by `pipeline/process-osm.mjs` from `sources/height-sources.json`; blocks get `heightSource: "cited"` and a `heightRef` object (value, unit, floors, storeyHeight, publisher, url, fetched, note).
 
 Conversion: stated floors × 3.5 m (default) or × 5 m for mall retail floors. The 5.0 m mall storey is this study’s assumption (retail floors are typically taller than office/residential floors); no fetched source states the malls’ roof height in metres.
 

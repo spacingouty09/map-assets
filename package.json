@@ -1,0 +1,32 @@
+{
+  "name": "map-assets",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Shared map data, OSM pipeline and Three.js 3D model of the KL Eco City – Mid Valley rail-and-mall cluster, Kuala Lumpur",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spacingouty09/map-assets.git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "data:fetch": "node pipeline/fetch-osm.mjs",
+    "data:process": "node pipeline/process-osm.mjs",
+    "data:check": "node pipeline/process-osm.mjs && git diff --exit-code --stat -- data/",
+    "example": "vite examples/basic",
+    "example:build": "vite build examples/basic"
+  },
+  "peerDependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "three": "0.186.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}
