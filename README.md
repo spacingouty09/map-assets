@@ -53,7 +53,7 @@ To change data or the model, follow [CONTRIBUTING.md](CONTRIBUTING.md).
 |---|---|
 | `npm run typecheck` | strict TypeScript check |
 | `npm run data:process` | rebuild `data/` from `raw/` + `sources/` |
-| `npm run data:check` | rebuild and fail if `data/` changed (CI) |
+| `npm run data:check` | fail if `data/` isn't exactly what the pipeline makes (CI) |
 | `npm run data:fetch` | re-pull OpenStreetMap into `raw/` |
 | `npm run example` / `example:build` | run / build `examples/basic` |
 

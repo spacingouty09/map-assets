@@ -2,6 +2,12 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## v0.1.1 (2026-10-12)
+
+Tooling only; data, API and model are unchanged from v0.1.0.
+
+- `npm run data:check` (`pipeline/check-data.mjs`) now checks that `data/` is exactly what the pipeline makes from the current `raw/` + `sources/`. Before, it compared with the last commit, so it failed right after a legitimate `data:process`, before you could commit.
+
 ## v0.1.0 (2026-10-12)
 
 First release, split out of [noowxela/klec-midvalley-infographic](https://github.com/noowxela/klec-midvalley-infographic) at `f26ec5c` (history kept for the moved files).

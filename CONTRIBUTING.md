@@ -36,7 +36,7 @@ Never edit `data/` by hand. CI regenerates it and fails the PR if it doesn't mat
 
 ```bash
 npm run data:process     # rebuild data/
-npm run data:check       # must print no diff after you have committed
+npm run data:check       # data/ is exactly what the pipeline makes (CI runs it too)
 npm run typecheck
 npm run example          # look at the model: http://127.0.0.1:5174/
 ```

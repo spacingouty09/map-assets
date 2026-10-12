@@ -22,7 +22,7 @@ The shared map of the KL Eco City – Mid Valley rail-and-mall cluster: OpenStre
 | `npm ci` | install (Node 22+) |
 | `npm run typecheck` | strict TypeScript check of `src/` and `examples/` |
 | `npm run data:process` | rebuild `data/` from `raw/` + `sources/` |
-| `npm run data:check` | rebuild and fail if `data/` changed (CI runs this) |
+| `npm run data:check` | fail if `data/` isn't exactly what the pipeline makes, e.g. after a hand edit (CI runs this) |
 | `npm run example` | the model alone at http://127.0.0.1:5174/ |
 | `npm run data:fetch` | re-pull OpenStreetMap into `raw/` (big diff; say so in the PR) |
 
