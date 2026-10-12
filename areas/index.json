@@ -1,5 +1,31 @@
 [
  {
+  "id": "bukit-jalil",
+  "name": "Bukit Jalil Sports City",
+  "kind": "signature",
+  "summary": "Bukit Jalil sports city: the National Sports Complex (National Stadium, Axiata Arena, the National Aquatic Centre), Pavilion Bukit Jalil and Bukit Jalil City, and Bukit Jalil Recreational Park, along the Sri Petaling Line (Bukit Jalil, Awan Besar, Muhibbah).",
+  "center": {
+   "lat": 3.056,
+   "lon": 101.678
+  },
+  "halfSizeM": 1800,
+  "bbox": {
+   "south": 3.03983,
+   "west": 101.661807,
+   "north": 3.07217,
+   "east": 101.694193
+  },
+  "stations": [
+   "SP17",
+   "SP18",
+   "SP19",
+   "SP20"
+  ],
+  "lines": [
+   "lrt"
+  ]
+ },
+ {
   "id": "klcc",
   "name": "KLCC",
   "kind": "signature",

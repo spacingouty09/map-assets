@@ -1,0 +1,17 @@
+{
+  "fetched": "2026-10-12",
+  "notes": "Cited facts quoted in websites' text about this area (every number shown must come from data or a cited source). Values as published; fetched on the date above.",
+  "facts": {
+    "stadium": { "name": "Bukit Jalil National Stadium (TM Stadium Nasional)", "capacity": 87500, "opened": "1998-07-11", "fieldM": [105, 68], "recordAttendance": 100000, "publisher": "Wikipedia – Bukit Jalil National Stadium", "url": "https://en.wikipedia.org/wiki/Bukit_Jalil_National_Stadium", "note": "Largest stadium in Southeast Asia; built for the 1998 Commonwealth Games; membrane roof. Renamed TM Stadium Nasional in March 2026. The National Sports Complex covers 1.2 km² (same article)." },
+    "arena": { "name": "Unifi Arena (ex-Axiata Arena, Stadium Putra)", "capacitySports": 16000, "capacityConcert": 11000, "opened": 1998, "renovated": 2017, "publisher": "Wikipedia – Unifi Arena", "url": "https://en.wikipedia.org/wiki/Axiata_Arena", "note": "Highest-capacity indoor venue in Malaysia. Renamed Unifi Arena from 6 March 2026." },
+    "complexAreaKm2": { "value": 1.2, "publisher": "Wikipedia – Bukit Jalil National Stadium", "url": "https://en.wikipedia.org/wiki/Bukit_Jalil_National_Stadium" },
+    "pavilion": { "opened": "2021-12-03", "floorAreaSqFt": 1800000, "floorAreaM2": 170000, "mallFloors": 5, "parking": 4717, "transit": "SP19 Awan Besar LRT via free shuttle bus, 40-minute intervals", "parkBridge": "a linked bridge connecting the recreational park and the mall on Level 5", "publisher": "Wikipedia – Pavilion Bukit Jalil", "url": "https://en.wikipedia.org/wiki/Pavilion_Bukit_Jalil" },
+    "bukitJalilCity": { "areaAcres": 50, "developer": "Malton Berhad", "started": 2015, "publisher": "Wikipedia – Pavilion Bukit Jalil", "url": "https://en.wikipedia.org/wiki/Pavilion_Bukit_Jalil" },
+    "line4": { "name": "Sri Petaling Line", "number": 4, "colourName": "maroon", "colour": "#721422", "stations": { "SP17": "Bukit Jalil", "SP18": "Sri Petaling", "SP19": "Awan Besar", "SP20": "Muhibbah" }, "sp17Opened": "1998-07-11", "sp19Opened": "2015-10-31", "trainCars": 6, "trainLengthM": 84.0, "publisher": "Wikipedia – Ampang and Sri Petaling lines (KVITS line 4, maroon); hex from Wikipedia Module:Adjacent stations/Rapid KL", "url": "https://en.wikipedia.org/wiki/Ampang_and_Sri_Petaling_lines", "note": "SP17 opened with the 11 July 1998 section; SP19/SP20 with the 31 October 2015 extension. SP17 and SP19 also listed as 'Public transit' for the stadium/arena and Pavilion respectively." },
+    "planned": [
+      { "osmName": "Park Green @ Bukit Jalil City (The Park 3)", "storeys": 47, "towers": 2, "units": 453, "publisher": "Park Green Pavilion Bukit Jalil (project site)", "url": "https://parkgreenpavilion.com.my/", "note": "Direct pedestrian bridge to Pavilion Bukit Jalil planned (rumavi.com listing)." },
+      { "osmName": "The Vividz @ Bukit Jalil", "storeys": 57, "towers": 2, "units": 1138, "completion": "est. 2029 Q2", "publisher": "EXSIM new project page", "url": "https://newproject-exsim.com/thevividz/" },
+      { "osmName": "Veladaz Residences @ Bukit Jalil", "storeys": 42, "towers": 1, "units": 508, "completion": "est. 2027 Q3", "publisher": "EXSIM new project page", "url": "https://newproject-exsim.com/veladazresidences/" }
+    ]
+  }
+}

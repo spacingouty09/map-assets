@@ -60,13 +60,15 @@ const yes = (v) => v != null && v !== 'no';
 
 // Rail line of an OSM track way, by name (official line names, Malay or English).
 const RAIL_LINES = [[/kelana jaya/i, 'lrt'], [/ktm/i, 'ktm'], [/erl|klia/i, 'erl'], [/putrajaya/i, 'py'], [/monorel|monorail/i, 'mr']];
-const railLine = (t) => RAIL_LINES.find(([re]) => re.test(t.name || ''))?.[1] ?? 'other';
 
 function processArea(id) {
   const cfg = areaConfig(id);
   const CENTER = cfg.center; const H = cfg.halfSizeM; const BBOX = cfg.bbox;
   const dir = (p) => `areas/${id}/${p}`;
   const rules = readJson(dir('rules.json'), {});
+  // rules.railLines: extra [name regex, line id] pairs tried before the shared list (e.g. Bukit Jalil: the Sri Petaling Line drawn as the area's 'lrt')
+  const LINES = [...(rules.railLines ?? []).map(([re, l]) => [new RegExp(re, 'i'), l]), ...RAIL_LINES];
+  const lineOf = (t) => LINES.find(([re]) => re.test(t.name || ''))?.[1] ?? 'other';
   const raw = JSON.parse(readFileSync(at(dir('raw/overpass.json')), 'utf8'));
   const cosLat = Math.cos(CENTER.lat * K);
   const proj = (p) => [(p.lon - CENTER.lon) * K * R * cosLat, (p.lat - CENTER.lat) * K * R];
@@ -226,16 +228,19 @@ function processArea(id) {
 
   // ---------- zones (rules.zones: by building / outline name, or by precinct; priority decides) ----------
   const outlineName = new Map(outlines.map((o) => [o.id, o.tags.name]));
-  const zoneRules = (rules.zones ?? []).map((z) => ({ ...z, nameSet: new Set(z.names ?? []) }));
+  // zone.near: blocks of the given OSM building types within radiusM of a point (e.g. the National Stadium roof, mapped as
+  // hundreds of unnamed building=roof pieces under a leisure=stadium outline that has no building tag)
+  const zoneRules = (rules.zones ?? []).map((z) => ({ ...z, nameSet: new Set(z.names ?? []), nearPt: z.near ? proj(z.near) : null }));
+  const isNear = (zr, b) => !!zr.nearPt && (!zr.near.types || zr.near.types.includes(b.type)) && Math.hypot(b.c[0] - zr.nearPt[0], b.c[1] - zr.nearPt[1]) <= zr.near.radiusM;
   const byPriority = zoneRules.slice().sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
   for (const b of buildings) {
     const parentName = b.parent ? outlineName.get(b.parent) : null;
-    const z = byPriority.find((zr) => (zr.names && (zr.nameSet.has(b.name) || zr.nameSet.has(parentName))) || (zr.precinct && b.precinct === zr.precinct));
+    const z = byPriority.find((zr) => (zr.names && (zr.nameSet.has(b.name) || zr.nameSet.has(parentName))) || (zr.precinct && b.precinct === zr.precinct) || isNear(zr, b));
     b.zone = z ? z.id : null;
   }
   // footprint per zone: union of block footprints rasterised on a 1 m grid (overlapping parts counted once)
   const zoneStats = {};
-  for (const z of zoneRules.map((zr) => zr.id)) {
+  for (const z of [...new Set(zoneRules.map((zr) => zr.id))]) {
     const bs = buildings.filter((b) => b.zone === z);
     const cells = new Set();
     for (const b of bs) {
@@ -335,7 +340,7 @@ function processArea(id) {
       }
     }
     if (e.type === 'way' && e.geometry && ['light_rail', 'rail', 'subway', 'monorail'].includes(t.railway)) {
-      for (const seg of clipLine(e.geometry.map(proj))) rails.push({ id: e.id, line: railLine(t), name: t.name || null, elevated: yes(t.bridge) || (num(t.layer) || 0) > 0, tunnel: t.tunnel === 'yes', layer: num(t.layer) || 0, service: t.service || null, pts: rnd(seg) });
+      for (const seg of clipLine(e.geometry.map(proj))) rails.push({ id: e.id, line: lineOf(t), name: t.name || null, elevated: yes(t.bridge) || (num(t.layer) || 0) > 0, tunnel: t.tunnel === 'yes', layer: num(t.layer) || 0, service: t.service || null, pts: rnd(seg) });
     }
     if (e.type === 'way' && e.geometry && t.waterway) {
       for (const seg of clipLine(e.geometry.map(proj))) waterLines.push({ id: e.id, kind: t.waterway, name: t['name:en'] || t.name || null, width: num(t.width), pts: rnd(seg) });
@@ -424,6 +429,8 @@ function processArea(id) {
       const score = { north: (q) => q[1], south: (q) => -q[1], east: (q) => q[0], west: (q) => -q[0] }[a.end];
       const pt = pts.length ? pts.reduce((m, q) => (score(q) > score(m) ? q : m)) : undefined;
       anchors[a.id] = { label: a.label, pt: pt ? [r1(pt[0]), r1(pt[1])] : undefined };
+    } else if (a.point) { // a point read off OSM (an object outside the Overpass pull, e.g. a leisure=stadium outline without a building tag); a.pointNote says which
+      anchors[a.id] = { label: a.label, pt: (([x, y]) => [r1(x), r1(y)])(proj(a.point)) };
     } else anchors[a.id] = { label: a.label, pt: a.station ? st(a.station)?.c : byName(a.building)?.c };
   }
   const within = (rules.routeWithin ?? []).map((w) => ({ key: w.key, ring: precinctRing(w.precinct) }));

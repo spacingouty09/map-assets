@@ -1,0 +1,148 @@
+{
+  "precincts": [
+    "Bukit Jalil City"
+  ],
+  "zones": [
+    {
+      "id": "pavilion",
+      "priority": 1,
+      "names": [
+        "Pavilion Bukit Jalil"
+      ]
+    },
+    {
+      "id": "sports",
+      "priority": 2,
+      "names": [
+        "Unifi Arena",
+        "National Squash Centre",
+        "Stadium Hoki Nasional Malaysia",
+        "Majlis Sukan Negara Malaysia"
+      ]
+    },
+    {
+      "id": "sports",
+      "priority": 3,
+      "near": {
+        "lat": 3.054677,
+        "lon": 101.69135,
+        "radiusM": 460,
+        "types": [
+          "roof"
+        ]
+      }
+    },
+    {
+      "id": "city",
+      "priority": 4,
+      "precinct": "Bukit Jalil City"
+    }
+  ],
+  "zoneNotes": "Three building zones (the fourth overview zone, Bukit Jalil Recreational Park, is a green area, not blocks: OSM leisure=park 'Taman Rekreasi Bukit Jalil', way/104732875). (1) Pavilion Bukit Jalil = the OSM building 'Pavilion Bukit Jalil' (way/1010118636, building=retail) and parts inside it; (2) National Sports Complex = the named venues by OSM building name (Unifi Arena, ex-Axiata Arena; the National Squash Centre; Stadium Hoki Nasional; the National Sports Council HQ) plus the building=roof pieces within 460 m of the National Stadium centre (OSM leisure=stadium 'TM Stadium Nasional', way/24691651, has no building tag: its roof and the aquatic centre canopies are mapped as unnamed building=roof pieces); (3) Bukit Jalil City = remaining blocks in the OSM landuse=commercial polygon 'Bukit Jalil City' (way/516568203). Priority decides which rule wins.",
+  "railLines": [
+    [
+      "sri petaling",
+      "lrt"
+    ]
+  ],
+  "railLineNotes": "The Sri Petaling Line (Line 4, OSM name 'Sri Petaling Line') is the only rail line in this area; it is stored as the area's 'lrt' line so the model draws its viaduct and trains in the LRT slot (a website passes the Line 4 colour as palette.rail.lrt).",
+  "landmarks": [
+    {
+      "name": "Unifi Arena",
+      "kind": "arena"
+    },
+    {
+      "name": "Pavilion Bukit Jalil",
+      "kind": "mall"
+    },
+    {
+      "name": "Stadium Hoki Nasional Malaysia",
+      "kind": "stadium"
+    }
+  ],
+  "landmarkNotes": "Selected by OSM name. The National Stadium (OSM leisure=stadium 'TM Stadium Nasional', way/24691651) has no building tag; its roof is mapped as ~300 building=roof pieces, which the model draws as blocks (estimated heights), so it is not a landmark entry here.",
+  "anchors": [
+    {
+      "id": "SP17",
+      "label": "Bukit Jalil LRT (SP17)",
+      "station": "SP17"
+    },
+    {
+      "id": "SP19",
+      "label": "Awan Besar LRT (SP19)",
+      "station": "SP19"
+    },
+    {
+      "id": "SP20",
+      "label": "Muhibbah LRT (SP20)",
+      "station": "SP20"
+    },
+    {
+      "id": "STADIUM",
+      "label": "National Stadium",
+      "point": {
+        "lat": 3.054677,
+        "lon": 101.69135
+      },
+      "pointNote": "centre of the OSM leisure=stadium outline 'TM Stadium Nasional' (way/24691651, mean of its 74 nodes, OSM API 2026-10-12)"
+    },
+    {
+      "id": "ARENA",
+      "label": "Axiata Arena (Unifi Arena)",
+      "building": "Unifi Arena"
+    },
+    {
+      "id": "PAVILION",
+      "label": "Pavilion Bukit Jalil",
+      "building": "Pavilion Bukit Jalil"
+    }
+  ],
+  "anchorNotes": "STADIUM is a point (the stadium has no building outline in OSM). Routes snap to the nearest mapped pedestrian node (≤ 25 m warning in the log).",
+  "routes": [
+    [
+      "leg1",
+      "SP17",
+      "STADIUM"
+    ],
+    [
+      "leg2",
+      "SP17",
+      "ARENA"
+    ],
+    [
+      "leg3",
+      "SP19",
+      "PAVILION"
+    ]
+  ],
+  "routeNotes": "routes (Connections): Bukit Jalil LRT to the National Stadium and to Axiata Arena (the sports complex walks), and Awan Besar LRT, the nearest station, to Pavilion Bukit Jalil (the mall walk).",
+  "walks": [
+    [
+      "w-sp17-arena",
+      "SP17",
+      "ARENA"
+    ],
+    [
+      "w-sp17-pavilion",
+      "SP17",
+      "PAVILION"
+    ],
+    [
+      "w-sp20-pavilion",
+      "SP20",
+      "PAVILION"
+    ],
+    [
+      "w-pavilion-stadium",
+      "PAVILION",
+      "STADIUM"
+    ]
+  ],
+  "railLengths": [
+    "lrt"
+  ],
+  "model": {
+    "lrtStop": "SP17"
+  },
+  "modelNotes": "The Sri Petaling Line runs on a viaduct here; trains stop at Bukit Jalil (SP17), next to the stadium."
+}
