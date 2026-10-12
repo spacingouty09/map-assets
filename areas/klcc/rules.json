@@ -127,7 +127,10 @@
     "undergroundStops": {
       "lrt": "KJ10",
       "py": "PY21"
-    }
+    },
+    "parkPaths": [
+      "KLCC Park"
+    ]
   },
-  "modelNotes": "Both lines run in tunnels here, so their tracks and trains are drawn in the underground view; undergroundStops are where their trains stop. The KL Monorail touches the south-west corner on its viaduct (above ground)."
+  "modelNotes": "Both lines run in tunnels here, so their tracks and trains are drawn in the underground view; undergroundStops are where their trains stop. The KL Monorail touches the south-west corner on its viaduct (above ground). parkPaths: the walkways and jogging track inside KLCC Park (OSM way 10590000) are part of the base map, shown in every chapter."
 }

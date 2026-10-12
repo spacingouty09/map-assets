@@ -78,6 +78,8 @@ export interface ModelRules {
   precinctOutlines?: string[];
   /** underground lines: stations where their trains stop, by line id */
   undergroundStops?: Partial<Record<RailLineId, string>>;
+  /** green areas (OSM name) whose ground-level paths are part of the base map, drawn in every view like the roads */
+  parkPaths?: string[];
 }
 export interface AreaRules { model?: ModelRules; [key: string]: unknown }
 /** One entry of the spot index (areas/index.json). */

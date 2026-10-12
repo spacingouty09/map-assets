@@ -55,6 +55,7 @@ export interface UpdateOptions {
 }
 
 const col = (c: string) => new THREE.Color(c || '#ff00ff');
+const inRing = (px: number, pn: number, ring: XY[]) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > pn) !== (yj > pn) && px < ((xj - xi) * (pn - yi)) / (yj - yi) + xi) c = !c; } return c; };
 
 interface BMesh { data: Building; mesh: THREE.Mesh; edges: THREE.LineSegments; key: boolean }
 
@@ -86,6 +87,7 @@ export class MapModel {
     rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm2: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), py: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), mr: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
     pier: new THREE.MeshLambertMaterial(),
     foot: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), footBridge: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }),
+    parkPath: new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide }),
     route: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
     routeDim: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.3 }),
     precinct: new THREE.LineDashedMaterial({ dashSize: 8, gapSize: 6, transparent: true, opacity: 0.7 }),
@@ -163,6 +165,11 @@ export class MapModel {
       ...lines.waterLines.map((w) => ribbon(w.pts.map(([x, n]) => v3(x, n, 0.09)), w.width ?? (w.kind === 'river' ? 20 : 4))),
     ]);
     this.group.add(new THREE.Mesh(water, this.mats.water));
+    // paths in the parks named in rules.parkPaths (ground level, mostly inside the park): part of the base map, in every view
+    const parks = areas.green.filter((a) => rules.parkPaths?.includes(a.name ?? ''));
+    const inPark = (pts: XY[]) => parks.some((a) => pts.filter(([x, n]) => inRing(x, n, a.ring)).length * 2 >= pts.length);
+    const parkPaths = lines.footways.filter((f) => f.layer === 0 && !f.bridge && !f.indoor && inPark(f.pts));
+    if (parkPaths.length) this.group.add(new THREE.Mesh(merge(parkPaths.map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, 0.12)), 2))), this.mats.parkPath));
 
     const major = new Set(['motorway', 'trunk', 'primary', 'secondary']);
     const roadG = (sel: boolean, y: number) => merge(lines.roads.filter((r) => major.has(r.cls) === sel && !r.tunnel).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, y)), r.w)));
@@ -182,7 +189,6 @@ export class MapModel {
     // Station structures over the at-grade KTM tracks would hide the trains standing at the platforms: OSM
     // building=roof (an open-sided canopy) is drawn as a roof slab, and any other block over the track is drawn
     // from a 5 m clearance up (schematic, like the deck heights). Heights shown in the UI are unchanged.
-    const inRing = (px: number, pn: number, ring: XY[]) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > pn) !== (yj > pn) && px < ((xj - xi) * (pn - yi)) / (yj - yi) + xi) c = !c; } return c; };
     const coversKtm = (b: Building) => {
       const xs = b.ring.map((p) => p[0]), ns = b.ring.map((p) => p[1]); const x0 = Math.min(...xs), x1 = Math.max(...xs), n0 = Math.min(...ns), n1 = Math.max(...ns);
       return this.ktmTracks.some((t) => { for (let i = t.inStart; i <= t.inEnd; i += 2) { const x = t.x[i], n = -t.z[i]; if (!t.hide[i] && x >= x0 && x <= x1 && n >= n0 && n <= n1 && inRing(x, n, b.ring)) return true; } return false; });
@@ -464,7 +470,7 @@ export class MapModel {
     m.edgeContext.opacity = p.edgeContextOpacity;
     m.rail.py.color = col(p.rail.py); m.rail.mr.color = col(p.rail.mr);
     m.rail.lrt.color = col(p.rail.lrt); m.rail.ktm.color = col(p.rail.ktm1); m.rail.ktm2.color = col(p.rail.ktm2); m.rail.erl.color = col(p.rail.erl); this.erlColors.base.copy(col(p.rail.erl)); this.erlColors.klia.copy(col(p.rail.kliaTransit)); if (this.mode) m.rail.erl.color.copy(this.mode.airport ? this.erlColors.klia : this.erlColors.base); if (this.skypark) (this.skypark.material as THREE.MeshBasicMaterial).color = col(p.rail.skypark);
-    m.foot.color = col(p.footway); m.footBridge.color = col(p.footbridge);
+    m.foot.color = col(p.footway); m.footBridge.color = col(p.footbridge); m.parkPath.color = col(p.footway);
     m.landmark.color = col(p.landmark); m.podium.color = col(p.podium);
     this.trains?.setColors(col(p.train.body), col(p.train.window), col(p.train.accent), edge, p.edgeOpacity * 0.85);
     this.ktmTrains?.setTrackColors(this.ktmTrackLine.map((l) => col(l === 1 ? p.rail.ktm1 : p.rail.ktm2)));
@@ -544,6 +550,7 @@ export class MapModel {
       if (mt.transparent !== ug) { mt.transparent = ug; mt.depthWrite = !ug; mt.needsUpdate = true; }
       mt.opacity = ug ? (mt === m.ground ? 0.22 : 0.4) : 1;
     }
+    m.parkPath.opacity = ug ? 0.3 : 0.8;
     this.underGroup.visible = ug;
     for (const [k, g] of Object.entries(this.facGroups) as [keyof SceneMode['facilities'], THREE.Group][]) g.visible = md.facilities[k];
     if (this.facFocus) { const at = md.facilityFocus ? this.facilityAt.get(md.facilityFocus) : null; this.facFocus.visible = !!at; if (at) this.facFocus.position.copy(at).add(new THREE.Vector3(0, 6, 0)); }
