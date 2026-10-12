@@ -2,6 +2,11 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## Unreleased (proposed v0.2.1: new spot; existing spots' data unchanged)
+
+- **New spot: Bukit Jalil Sports City** (`bukit-jalil`): Pavilion Bukit Jalil, the National Sports Complex (TM Stadium Nasional, Unifi Arena, the aquatic centre, hockey and squash venues), Bukit Jalil City and Bukit Jalil Recreational Park, around SP17 Bukit Jalil, SP19 Awan Besar and SP20 Muhibbah on the Sri Petaling Line (4). Cited heights for 7 buildings (3 of them planned towers under construction) and a cited `facts.json`.
+- **Pipeline (optional rules, no effect on existing spots):** `rules.railLines` (spot-specific line-name patterns, tried before the built-in list), `point` anchors (`{ lat, lon }`), and `near` zone rules (building types within a radius of a point). Duplicate zone ids in `rules.zones` are counted once.
+
 ## v0.2.0 (2026-10-12)
 
 **Breaking:** map-assets now holds several spots, so websites load one with `loadArea(id)` instead of importing the data directly. Mid Valley's existing data files are byte-for-byte the same as v0.1.3 (it gains a `facilities.json`), and the model draws it pixel for pixel the same way.
