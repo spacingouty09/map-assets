@@ -37,22 +37,22 @@ Coordinates are metres in a local frame: `x` east and `y` north of the study-are
 
 ## Set up
 
-You need Node 22+ and access to this private repo (ask for an invite, then accept it on GitHub). If `git clone` asks for a password, run `gh auth login` and `gh auth setup-git` (GitHub CLI) once, or use a personal access token.
+You need Node 22+. The repo is public, so anyone can clone it. To push branches here, ask for write access; without it, fork the repo on GitHub and open pull requests from your fork.
 
 ### Quick start with an AI agent
 
 Copy one of these into your AI coding agent (Cursor, Grok, Claude Code, Codex…). It checks your access, clones, sets everything up and explains how to contribute.
 
-**Usual: the website with the map inside it** (you also need access to map-infographic). You see your map changes in a real site:
+**Usual: the website with the map inside it** (map-infographic is private: ask for an invite first). You see your map changes in a real site:
 
 ```text
-Set me up to contribute to the KL Eco City – Mid Valley map project (private GitHub repos spacingouty09/map-infographic and its submodule spacingouty09/map-assets). 1) Check that I have git and Node 22+, and that git can reach both repos: `git ls-remote https://github.com/spacingouty09/map-infographic.git` and `git ls-remote https://github.com/spacingouty09/map-assets.git`. If anything fails, stop and tell me exactly what to do (usually: accept both repo invites on GitHub, then run `gh auth login` and `gh auth setup-git`). 2) Ask me which folder to use, then run `git clone --recurse-submodules https://github.com/spacingouty09/map-infographic.git` there. 3) Open the map-infographic folder and follow the "First-time setup" section of its AGENTS.md. If you can't run commands yourself, give them to me one at a time and wait for the output. Don't commit, push or open pull requests without asking me.
+Set me up to contribute to the KL Eco City – Mid Valley map project (private GitHub repo spacingouty09/map-infographic, with the public spacingouty09/map-assets as a submodule). 1) Check that I have git and Node 22+, and that git can reach the website repo: `git ls-remote https://github.com/spacingouty09/map-infographic.git`. If that fails, stop and tell me exactly what to do (usually: accept the map-infographic invite on GitHub, then run `gh auth login` and `gh auth setup-git`). 2) Ask me which folder to use, then run `git clone --recurse-submodules https://github.com/spacingouty09/map-infographic.git` there. 3) Open the map-infographic folder and follow the "First-time setup" section of its AGENTS.md. If you can't run commands yourself, give them to me one at a time and wait for the output. Don't commit, push or open pull requests without asking me.
 ```
 
 **Map only:**
 
 ```text
-Set me up to contribute to the KL Eco City – Mid Valley shared map (private GitHub repo spacingouty09/map-assets). 1) Check that I have git and Node 22+, and that git can reach the repo: `git ls-remote https://github.com/spacingouty09/map-assets.git`. If that fails, stop and tell me exactly what to do (usually: accept the repo invite on GitHub, then run `gh auth login` and `gh auth setup-git`). 2) Ask me which folder to use, then run `git clone https://github.com/spacingouty09/map-assets.git` there. 3) Open the map-assets folder and follow the "First-time setup" section of its AGENTS.md. If you can't run commands yourself, give them to me one at a time and wait for the output. Don't commit, push or open pull requests without asking me.
+Set me up to contribute to the KL Eco City – Mid Valley shared map (public GitHub repo spacingouty09/map-assets). 1) Check that I have git and Node 22+; if not, stop and tell me exactly what to install. 2) Ask me which folder to use, then run `git clone https://github.com/spacingouty09/map-assets.git` there. 3) Open the map-assets folder and follow the "First-time setup" section of its AGENTS.md. If you can't run commands yourself, give them to me one at a time and wait for the output. If I don't have write access to the repo, my pull requests go through a fork; help me set that up when I'm ready. Don't commit, push or open pull requests without asking me.
 ```
 
 ### By hand
@@ -187,4 +187,4 @@ The whole thing is in [examples/basic/main.ts](examples/basic/main.ts). Need onl
 
 ## Licence
 
-No licence yet: all rights reserved by the authors. The map data stays under the ODbL as above.
+No licence for the code yet: it is public to read, but all rights are reserved by the authors until a licence is chosen. The map data (`data/`, `raw/`) is © OpenStreetMap contributors and available under the [ODbL](https://opendatacommons.org/licenses/odbl/), as above.

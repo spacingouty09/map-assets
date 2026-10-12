@@ -51,6 +51,8 @@ git commit -m "Heights: The Gardens towers from <publisher>"
 git push -u origin data/gardens-heights
 ```
 
+No write access? Fork the repo on GitHub, push the branch to your fork and open the pull request from there.
+
 Open the PR on GitHub (or `gh pr create`). In the description, list the sources (publisher, URL, date fetched) and attach a screenshot from `npm run example` if the model looks different. CI runs the type check, `data:check` and the example build.
 
 ## 5. Release (maintainers, after merge)

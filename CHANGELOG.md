@@ -2,6 +2,13 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## v0.1.2 (2026-10-12)
+
+Docs only; data, API and model are unchanged from v0.1.1.
+
+- The repo is now **public**: no invite or token is needed to clone it or to fetch it as a submodule in CI. Contributors without write access open pull requests from a fork. The code has no licence yet (public to read, all rights reserved); the map data stays under the ODbL.
+- README "Quick start with an AI agent": copy-paste setup prompts for any agent (website + map, or map only), and an AGENTS.md "First-time setup" section they hand over to.
+
 ## v0.1.1 (2026-10-12)
 
 Tooling only; data, API and model are unchanged from v0.1.0.
