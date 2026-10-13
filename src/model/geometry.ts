@@ -28,6 +28,38 @@ export function ribbon(pts: THREE.Vector3[], width: number): THREE.BufferGeometr
   return g;
 }
 export const merge = (gs: (THREE.BufferGeometry | null)[]) => { const ok = gs.filter((g): g is THREE.BufferGeometry => !!g); for (const g of ok) { g.deleteAttribute('uv'); if (!g.index) g.setIndex([...Array(g.getAttribute('position').count).keys()]); } return ok.length ? mergeGeometries(ok, false) : new THREE.BufferGeometry(); };
+
+/** Copy-and-merge. Does not mutate the inputs, so the same buildings can be batched again under another material. */
+function mergeChunked(gs: THREE.BufferGeometry[], solid: boolean): THREE.BufferGeometry {
+  const copies: THREE.BufferGeometry[] = [];
+  for (const g of gs) {
+    const pos = g.getAttribute('position'); if (!pos || pos.count < (solid ? 3 : 2)) continue;
+    const c = new THREE.BufferGeometry(); c.setAttribute('position', pos.clone());
+    if (solid) {
+      const nor = g.getAttribute('normal');
+      if (nor && nor.count === pos.count) c.setAttribute('normal', nor.clone());
+      else { const n = new Float32Array(pos.count * 3); for (let i = 1; i < n.length; i += 3) n[i] = 1; c.setAttribute('normal', new THREE.BufferAttribute(n, 3)); }
+      if (g.index) c.setIndex(g.index.clone());
+      else { const idx = new Uint32Array(pos.count); for (let i = 0; i < pos.count; i++) idx[i] = i; c.setIndex(new THREE.BufferAttribute(idx, 1)); }
+    }
+    copies.push(c);
+  }
+  if (!copies.length) return new THREE.BufferGeometry();
+  if (copies.length === 1) return copies[0];
+  const parts: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < copies.length; i += 256) {
+    const slice = copies.slice(i, i + 256);
+    const m = mergeGeometries(slice, false); for (const s of slice) s.dispose();
+    if (!m) throw new Error('mergeGeometries failed');
+    parts.push(m);
+  }
+  if (parts.length === 1) return parts[0];
+  const out = mergeGeometries(parts, false); for (const p of parts) p.dispose();
+  if (!out) throw new Error('mergeGeometries failed');
+  return out;
+}
+export const mergeSolids = (gs: THREE.BufferGeometry[]) => mergeChunked(gs, true);
+export const mergeLines = (gs: THREE.BufferGeometry[]) => mergeChunked(gs, false);
 export const flatShape = (ring: XY[], y: number) => { const g = new THREE.ShapeGeometry(new THREE.Shape(ring.map(([x, n]) => new THREE.Vector2(x, n)))); g.rotateX(-Math.PI / 2); g.translate(0, y, 0); return g; };
 
 /** Drawn height (m) of a walking route segment on OSM layer `layer` (schematic deck heights). */

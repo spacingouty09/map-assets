@@ -2,7 +2,7 @@
 // Pick the area with ?area=<id> (or the picker); in a website the import is '@map-assets' (see README.md).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { MapModel, LIGHT_PALETTE, DARK_PALETTE, listAreas, loadArea } from '../../src';
+import { MapModel, LIGHT_PALETTE, DARK_PALETTE, listAreas, loadArea, clipPlanes } from '../../src';
 
 const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -16,11 +16,13 @@ for (const a of areas) picker.append(new Option(a.name, a.id, false, a.id === ar
 picker.addEventListener('change', () => { location.search = `?area=${encodeURIComponent(picker.value)}`; });
 document.body.append(picker);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
 renderer.localClippingEnabled = true; // trains are clipped at the study-area edge
 document.body.append(renderer.domElement);
 
@@ -37,6 +39,9 @@ addEventListener('resize', () => {
 });
 
 void loadArea(areaId).then((area) => {
+  const clip = clipPlanes(area.meta.halfSizeM);
+  camera.near = clip.near; camera.far = clip.far; camera.updateProjectionMatrix();
+  controls.maxDistance = Math.max(6000, area.meta.halfSizeM * 4);
   const model = new MapModel(area, { palette: dark ? DARK_PALETTE : LIGHT_PALETTE });
   model.setMode({ rails: { lrt: 'highlight', ktm: 'highlight', erl: 'context' }, footways: 'faint', routeSet: 'walks' });
   scene.add(model.group);
@@ -46,6 +51,10 @@ void loadArea(areaId).then((area) => {
     const dt = last ? (now - last) / 1000 : 0; last = now;
     model.update(now, dt, { reducedMotion: reducedMotion(), paused: document.hidden });
     controls.update();
+    const dist = Math.max(1, camera.position.distanceTo(controls.target));
+    const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov) * 0.5) * dist;
+    model.setScreenDensity((innerHeight * 0.5) / halfH);
+    if (model.fitShadows(camera, controls.target)) renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, camera);
   });
 });

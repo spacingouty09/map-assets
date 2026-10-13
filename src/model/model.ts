@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { Area, XY, Building, HeightSource, Route, Zone, Rail, RailLineId } from '../data';
 import { chainWays, chainWaysAnyDir, orientLeftHand, buildTrack, Trains, TRAIN, KTM_TRAIN, MRT_TRAIN, type Track } from './trains';
 import { sunVector } from '../sun';
-import { v3, ribbon, merge, flatShape, routeY } from './geometry';
+import { v3, ribbon, merge, mergeSolids, mergeLines, flatShape, routeY } from './geometry';
 import { LIGHT_PALETTE, type Palette } from './palette';
 
 export type RailState = 'highlight' | 'context' | 'hidden';
@@ -56,7 +56,25 @@ export interface UpdateOptions {
 
 const col = (c: string) => new THREE.Color(c || '#ff00ff');
 
-interface BMesh { data: Building; mesh: THREE.Mesh; edges: THREE.LineSegments; key: boolean }
+/** Buildings are merged per 1 km square (frustum culling). */
+const TILE_M = 1000;
+/** Below this, outlines and context blocks drop out. Bukit Jalil's own chapters stay above it, including a phone
+ *  pulled back to fit (measured ~0.23 px/m on the widest chapter). A 20 km square framed the same way is ~0.1. */
+const CONTEXT_MIN_PX = 0.12;
+/** A 4096² shadow map coarser than this reads as noise, so the sun stops casting. */
+const SHADOW_TEXEL_M = 2.5;
+const tileKey = (c: XY) => `${Math.floor(c[0] / TILE_M)}:${Math.floor(c[1] / TILE_M)}`;
+
+/** Clip distances for a study area. Use with `logarithmicDepthBuffer: true` on the renderer: a fixed 24-bit
+ *  depth range cannot separate the ground layers once the camera is several kilometres out, and `far` has to
+ *  grow with the area (3× the diagonal, and at least the 14 km the Bukit Jalil site already used). */
+export function clipPlanes(halfSizeM: number): { near: number; far: number } {
+  const diagonal = Math.max(0, halfSizeM) * 2 * Math.SQRT2;
+  return { near: 1, far: Math.max(14000, diagonal * 3) };
+}
+
+interface BRec { data: Building; geo: THREE.BufferGeometry; edge: THREE.BufferGeometry; key: boolean }
+interface Batch { mesh: THREE.Mesh; edges: THREE.LineSegments; key: boolean }
 
 export class MapModel {
   /** Root of the model (lights included); add it to your scene. */
@@ -68,11 +86,28 @@ export class MapModel {
 
   private hemi = new THREE.HemisphereLight(0xffffff, 0xbdbdb8, 2.4);
   private sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  private bmeshes: BMesh[] = [];
+  private brecs: BRec[] = [];
+  /** Off-scene copies of each block, for shade raycasts. The drawn blocks are merged per tile. */
+  private shadeMeshes: THREE.Mesh[] = [];
+  private buildingGroup = new THREE.Group();
+  private batches: Batch[] = [];
+  private batchCache = new Map<string, Batch[]>();
+  private batchSig = '';
+  /** 0–1 outline strength from screen density. Full strength up close; 0 when the view is very wide. */
+  private edgeFade = 1;
+  private contextOn = true;
+  private maxH = 80;
+  private shadowGeo = '';
+  private shadowDirty = true;
+  private shadowScratch = { pos: new THREE.Vector3(), at: new THREE.Vector3(), corner: new THREE.Vector3() };
+  /** Outline strength last applied by setScreenDensity (1 until the site reports a density). */
+  get outlineFade() { return this.edgeFade; }
   private mats = {
     ground: new THREE.MeshLambertMaterial(),
-    road: new THREE.MeshBasicMaterial(), roadMajor: new THREE.MeshBasicMaterial(),
-    water: new THREE.MeshBasicMaterial(), green: new THREE.MeshBasicMaterial(),
+    // Flat overlays never write depth. Draw order (renderOrder) decides who wins, so they cannot z-fight
+    // however far the camera is. The ground plane still writes depth and receives shadows.
+    road: new THREE.MeshBasicMaterial({ depthWrite: false }), roadMajor: new THREE.MeshBasicMaterial({ depthWrite: false }),
+    water: new THREE.MeshBasicMaterial({ depthWrite: false }), green: new THREE.MeshBasicMaterial({ depthWrite: false }),
     build: new THREE.MeshLambertMaterial(), context: new THREE.MeshLambertMaterial(),
     fade: new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.35 }),
     xray: new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.16, depthWrite: false }),
@@ -85,7 +120,7 @@ export class MapModel {
     // polygon offset: the deck sits exactly on top of the KJ17 roof block (both 10.5 m); keep it on top without z-fighting
     rail: { lrt: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), ktm: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), ktm2: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), erl: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), py: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), mr: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }) },
     pier: new THREE.MeshLambertMaterial(),
-    foot: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }), footBridge: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }),
+    foot: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false }), footBridge: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false }),
     route: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
     routeDim: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.3 }),
     precinct: new THREE.LineDashedMaterial({ dashSize: 8, gapSize: 6, transparent: true, opacity: 0.7 }),
@@ -134,7 +169,10 @@ export class MapModel {
     this.group.add(this.hemi, this.sun, this.sun.target);
     this.sun.position.set(-420, 900, -380);
     this.sun.castShadow = true;
-    Object.assign(this.sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 50, far: 3200 });
+    // ±760 covers KLEC (halfSize 500). Larger areas start with a frustum around the whole square; fitShadows()
+    // then tightens it to the view (and turns shadows off when the view is too wide for the shadow map).
+    const shadowR = Math.max(760, area.meta.halfSizeM + 200);
+    Object.assign(this.sun.shadow.camera, { left: -shadowR, right: shadowR, top: shadowR, bottom: -shadowR, near: 50, far: Math.max(3200, shadowR * 4) });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.mapSize.set(4096, 4096);
     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.6; this.sun.shadow.radius = 3;
@@ -150,24 +188,25 @@ export class MapModel {
     const H = this.area.meta.halfSizeM;
     const rules = this.area.rules.model ?? {};
     for (const z of this.area.zones) if (!this.mats.zone[z]) this.mats.zone[z] = new THREE.MeshLambertMaterial(); // zones beyond the default three
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.mats.ground);
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.group.add(ground);
+    const span = Math.max(6000, H * 2 * Math.SQRT2 + 800);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(span, span), this.mats.ground);
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.renderOrder = 0; this.group.add(ground);
 
     // study-area frame
     const frame = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([v3(-H, -H, 0.3), v3(H, -H, 0.3), v3(H, H, 0.3), v3(-H, H, 0.3)]), this.mats.frame);
     this.group.add(frame);
 
-    this.group.add(new THREE.Mesh(merge(areas.green.map((a) => flatShape(a.ring, 0.04))), this.mats.green));
+    const green = new THREE.Mesh(merge(areas.green.map((a) => flatShape(a.ring, 0.04))), this.mats.green); green.renderOrder = 1; this.group.add(green);
     const water = merge([
       ...areas.waterAreas.map((a) => flatShape(a.ring, 0.1)),
       ...lines.waterLines.map((w) => ribbon(w.pts.map(([x, n]) => v3(x, n, 0.09)), w.width ?? (w.kind === 'river' ? 20 : 4))),
     ]);
-    this.group.add(new THREE.Mesh(water, this.mats.water));
+    const waterMesh = new THREE.Mesh(water, this.mats.water); waterMesh.renderOrder = 4; this.group.add(waterMesh);
 
     const major = new Set(['motorway', 'trunk', 'primary', 'secondary']);
     const roadG = (sel: boolean, y: number) => merge(lines.roads.filter((r) => major.has(r.cls) === sel && !r.tunnel).map((r) => ribbon(r.pts.map(([x, n]) => v3(x, n, y)), r.w)));
-    this.group.add(new THREE.Mesh(roadG(false, 0.06), this.mats.road));
-    this.group.add(new THREE.Mesh(roadG(true, 0.08), this.mats.roadMajor));
+    const roads = new THREE.Mesh(roadG(false, 0.06), this.mats.road); roads.renderOrder = 2; this.group.add(roads);
+    const roadsMajor = new THREE.Mesh(roadG(true, 0.08), this.mats.roadMajor); roadsMajor.renderOrder = 3; this.group.add(roadsMajor);
 
     // KTM: per Komuter line, the OSM main-track ways chained into one continuous track per direction (left-hand
     // running), at the drawn deck height with 4 % approach ramps to the bridges (schematic); tunnel stretches carry trains but are not drawn.
@@ -188,19 +227,21 @@ export class MapModel {
       return this.ktmTracks.some((t) => { for (let i = t.inStart; i <= t.inEnd; i += 2) { const x = t.x[i], n = -t.z[i]; if (!t.hide[i] && x >= x0 && x <= x1 && n >= n0 && n <= n1 && inRing(x, n, b.ring)) return true; } return false; });
     };
     const KTM_CLEAR = 5, SLAB = 0.6;
-    // buildings
+    // buildings: keep one geometry per block (shade rays, and re-batching when the colour mode changes) but draw
+    // them merged per 1 km tile and material, otherwise a 5k-block area is thousands of draw calls.
+    this.group.add(this.buildingGroup);
     for (const b of buildings) {
+      this.maxH = Math.max(this.maxH, b.height);
       let base = b.minHeight;
       if (b.minHeight < KTM_CLEAR && b.height > 4.6 && coversKtm(b)) base = Math.max(b.minHeight, b.type === 'roof' ? b.height - SLAB : Math.min(KTM_CLEAR, b.height - SLAB));
       const h = Math.max(1, b.height - base);
       const shape = new THREE.Shape(b.ring.map(([x, n]) => new THREE.Vector2(x, n)));
       const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
       g.rotateX(-Math.PI / 2); g.translate(0, base, 0);
-      const mesh = new THREE.Mesh(g, this.mats.build); mesh.castShadow = true; mesh.receiveShadow = true;
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), this.mats.edgeKey);
       const key = !!b.precinct || !!b.station || b.height >= 45;
-      this.bmeshes.push({ data: b, mesh, edges, key });
-      this.group.add(mesh, edges);
+      const edge = new THREE.EdgesGeometry(g, 25);
+      this.brecs.push({ data: b, geo: g, edge, key });
+      const shade = new THREE.Mesh(g); shade.matrixAutoUpdate = false; this.shadeMeshes.push(shade);
     }
 
     // rail
@@ -293,8 +334,8 @@ export class MapModel {
 
     // footways
     const fy = (f: { bridge: boolean; layer: number; indoor: boolean }) => (f.bridge ? 5 + Math.max(0, f.layer - 1) * 3 : f.layer > 0 ? 5 + (f.layer - 1) * 3 : 0.22);
-    this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => !f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 1.4))), this.mats.foot));
-    this.footGroup.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 2.4))), this.mats.footBridge));
+    const footFlat = new THREE.Mesh(merge(lines.footways.filter((f) => !f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 1.4))), this.mats.foot); footFlat.renderOrder = 6; this.footGroup.add(footFlat);
+    const footUp = new THREE.Mesh(merge(lines.footways.filter((f) => f.bridge).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f))), 2.4))), this.mats.footBridge); footUp.renderOrder = 7; this.footGroup.add(footUp);
     this.group.add(this.footGroup);
     // footways coloured by shelter (chapter 08)
     this.footRain.add(new THREE.Mesh(merge(lines.footways.filter((f) => f.sheltered).map((f) => ribbon(f.pts.map(([x, n]) => v3(x, n, fy(f) + 0.05)), f.bridge ? 2.6 : 2))), this.mats.rainCovered));
@@ -435,7 +476,7 @@ export class MapModel {
   shadeTest(pts: THREE.Vector3[], altitude: number, azimuth: number): boolean[] {
     if (altitude <= 0) return pts.map(() => true);
     const dir = new THREE.Vector3(...sunVector(altitude, azimuth)); const rc = new THREE.Raycaster(); rc.far = 2500;
-    const meshes = this.bmeshes.map((b) => b.mesh);
+    const meshes = this.shadeMeshes;
     return pts.map((p) => { rc.set(p, dir); return rc.intersectObjects(meshes, false).length > 0; });
   }
   setShadeResult(shaded: boolean[]) {
@@ -490,17 +531,7 @@ export class MapModel {
     const prev = this.mode;
     this.mode = { ...this.mode, ...patch, rails: { ...this.mode.rails, ...(patch.rails || {}) }, facilities: { ...this.mode.facilities, ...(patch.facilities || {}) } };
     const md = this.mode; const m = this.mats;
-    for (const b of this.bmeshes) {
-      let mat: THREE.Material = b.key ? m.build : m.context; let em: THREE.LineBasicMaterial = b.key ? m.edgeKey : m.edgeContext;
-      if (md.buildingStyle === 'source') { mat = m.src[b.data.heightSource]; em = m.edgeKey; }
-      else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] ?? m.context : m.context; em = b.data.zone ? m.edgeKey : m.edgeContext; }
-      else if (md.buildingStyle === 'threshold') { const on = b.data.height >= md.threshold; mat = on ? m.build : m.fade; em = on ? m.edgeKey : m.edgeFade; }
-      if (md.landmarks && b.data.landmark) { mat = m.landmark; em = m.edgeKey; }
-      if (md.landmarks && b.data.podiumFor) { mat = m.podium; em = m.edgeKey; }
-      if (md.xray) { mat = m.xray; em = b.key ? m.edgeContext : m.edgeFade; }
-      b.mesh.material = mat; b.edges.material = em;
-      b.mesh.castShadow = !md.xray;
-    }
+    this.syncBatches();
     for (const line of ['lrt', 'ktm', 'erl', 'py', 'mr'] as const) {
       const st = md.rails[line]; const grp = this.railGroups[line];
       grp.visible = st !== 'hidden';
@@ -540,14 +571,159 @@ export class MapModel {
     if (this.ktmTrains) this.ktmTrains.group.visible = this.trainsOn && md.rails.ktm !== 'hidden';
     // underground view: ground layers turn see-through so the tunnels show beneath
     const ug = md.underground;
-    for (const mt of [m.ground, m.road, m.roadMajor, m.water, m.green]) {
-      if (mt.transparent !== ug) { mt.transparent = ug; mt.depthWrite = !ug; mt.needsUpdate = true; }
-      mt.opacity = ug ? (mt === m.ground ? 0.22 : 0.4) : 1;
+    const stack: [THREE.Material, number, boolean][] = [
+      [m.ground, ug ? 0.22 : 1, !ug],
+      [m.green, ug ? 0.4 : 1, false], [m.road, ug ? 0.4 : 1, false], [m.roadMajor, ug ? 0.4 : 1, false], [m.water, ug ? 0.4 : 1, false],
+    ];
+    for (const [mt, op, write] of stack) {
+      if (mt.transparent !== ug || mt.depthWrite !== write) { mt.transparent = ug; mt.depthWrite = write; mt.needsUpdate = true; }
+      mt.opacity = op;
     }
     this.underGroup.visible = ug;
     for (const [k, g] of Object.entries(this.facGroups) as [keyof SceneMode['facilities'], THREE.Group][]) g.visible = md.facilities[k];
     if (this.facFocus) { const at = md.facilityFocus ? this.facilityAt.get(md.facilityFocus) : null; this.facFocus.visible = !!at; if (at) this.facFocus.position.copy(at).add(new THREE.Vector3(0, 6, 0)); }
     for (const ut of this.underTrains) ut.trains.group.visible = ug && this.trainsOn && md.rails[ut.line as RailGroupId] !== 'hidden';
+    this.applyOutline();
+  }
+
+  // ---------- building batches and the wide-view camera ----------
+  private appearance(b: BRec): { mat: THREE.Material; edge: THREE.LineBasicMaterial; key: boolean } {
+    const md = this.mode; const m = this.mats;
+    let mat: THREE.Material = b.key ? m.build : m.context;
+    let edge: THREE.LineBasicMaterial = b.key ? m.edgeKey : m.edgeContext;
+    if (md.buildingStyle === 'source') { mat = m.src[b.data.heightSource]; edge = m.edgeKey; }
+    else if (md.buildingStyle === 'zone') { mat = b.data.zone ? m.zone[b.data.zone] ?? m.context : m.context; edge = b.data.zone ? m.edgeKey : m.edgeContext; }
+    else if (md.buildingStyle === 'threshold') { const on = b.data.height >= md.threshold; mat = on ? m.build : m.fade; edge = on ? m.edgeKey : m.edgeFade; }
+    if (md.landmarks && b.data.landmark) { mat = m.landmark; edge = m.edgeKey; }
+    if (md.landmarks && b.data.podiumFor) { mat = m.podium; edge = m.edgeKey; }
+    if (md.xray) { mat = m.xray; edge = b.key ? m.edgeContext : m.edgeFade; }
+    const keep = b.key || !!(md.landmarks && (b.data.landmark || b.data.podiumFor));
+    return { mat, edge, key: keep };
+  }
+  private makeBatches(): Batch[] {
+    const groups = new Map<string, { mat: THREE.Material; edge: THREE.LineBasicMaterial; key: boolean; geos: THREE.BufferGeometry[]; edges: THREE.BufferGeometry[] }>();
+    for (const b of this.brecs) {
+      const look = this.appearance(b); const id = `${tileKey(b.data.c)}|${look.mat.uuid}|${look.edge.uuid}|${look.key ? 1 : 0}`;
+      let g = groups.get(id);
+      if (!g) groups.set(id, g = { mat: look.mat, edge: look.edge, key: look.key, geos: [], edges: [] });
+      g.geos.push(b.geo); if (b.edge.getAttribute('position')?.count) g.edges.push(b.edge);
+    }
+    const out: Batch[] = [];
+    for (const g of groups.values()) {
+      const mesh = new THREE.Mesh(mergeSolids(g.geos), g.mat); mesh.castShadow = !this.mode.xray; mesh.receiveShadow = true;
+      mesh.geometry.computeBoundingSphere();
+      const edges = new THREE.LineSegments(g.edges.length ? mergeLines(g.edges) : new THREE.BufferGeometry(), g.edge);
+      if (g.edges.length) edges.geometry.computeBoundingSphere();
+      out.push({ mesh, edges, key: g.key });
+    }
+    return out;
+  }
+  private disposeBatches(list: Batch[]) {
+    for (const b of list) { b.mesh.geometry.dispose(); b.edges.geometry.dispose(); }
+  }
+  /** Draw the blocks for the current colour mode. Cached: chapter changes revisit the same few modes. */
+  private syncBatches() {
+    const md = this.mode;
+    const sig = `${md.buildingStyle}|${md.threshold}|${md.landmarks ? 1 : 0}|${md.xray ? 1 : 0}`;
+    if (sig === this.batchSig) return;
+    for (const b of this.batches) this.buildingGroup.remove(b.mesh, b.edges);
+    let next = this.batchCache.get(sig);
+    if (next) { this.batchCache.delete(sig); this.batchCache.set(sig, next); }
+    else {
+      next = this.makeBatches(); this.batchCache.set(sig, next);
+      while (this.batchCache.size > 3) {
+        const oldest = this.batchCache.keys().next().value as string | undefined;
+        if (!oldest || oldest === sig) break;
+        const dead = this.batchCache.get(oldest); this.batchCache.delete(oldest); if (dead) this.disposeBatches(dead);
+      }
+    }
+    this.batches = next; this.batchSig = sig; this.shadowDirty = true;
+    for (const b of next) { b.mesh.castShadow = !md.xray; this.buildingGroup.add(b.mesh, b.edges); }
+  }
+  private applyOutline() {
+    const f = this.edgeFade; const p = this.palette;
+    this.mats.edgeKey.opacity = p.edgeOpacity * f;
+    this.mats.edgeContext.opacity = p.edgeContextOpacity * f;
+    this.mats.edgeFade.opacity = 0.08 * f;
+    const lines = f > 0.02;
+    for (const b of this.batches) {
+      const show = b.key || this.contextOn;
+      b.mesh.visible = show; b.edges.visible = show && lines;
+    }
+  }
+  /**
+   * Outline strength from pixels per metre at the orbit target. The overview stays at the 35 % floor from the
+   * flicker fix (full strength from 1.3 px/m). Outlines and context blocks go away below {@link CONTEXT_MIN_PX}.
+   */
+  setScreenDensity(pxPerMetre: number) {
+    const raw = pxPerMetre < CONTEXT_MIN_PX ? 0 : 0.35 + 0.65 * THREE.MathUtils.clamp((pxPerMetre - 0.6) / 0.7, 0, 1);
+    const fade = Math.round(raw * 100) / 100;
+    const context = pxPerMetre >= CONTEXT_MIN_PX;
+    if (fade === this.edgeFade && context === this.contextOn) return;
+    if (context !== this.contextOn) this.shadowDirty = true;
+    this.edgeFade = fade; this.contextOn = context; this.applyOutline();
+  }
+  private viewRadius(camera: THREE.Camera, target: THREE.Vector3): number {
+    const dist = Math.max(1, camera.position.distanceTo(target));
+    if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+      const persp = camera as THREE.PerspectiveCamera;
+      const halfH = Math.tan(THREE.MathUtils.degToRad(persp.fov) * 0.5) * dist;
+      const halfW = halfH * Math.max(0.5, persp.aspect);
+      const down = this.shadowScratch.at.copy(target).sub(camera.position);
+      const tilt = Math.atan2(Math.hypot(down.x, down.z), Math.max(1, -down.y));
+      return Math.hypot(halfW, halfH) / Math.max(0.35, Math.cos(tilt));
+    }
+    const ortho = camera as THREE.OrthographicCamera;
+    return Math.hypot(ortho.right - ortho.left, ortho.top - ortho.bottom) * 0.5;
+  }
+  /**
+   * Fit the sun's shadow box to the ground around `target`. Shadows turn off when that box would be coarser than
+   * 2.5 m per texel. Returns true when the site should set `renderer.shadowMap.needsUpdate` — the map is not
+   * redrawn every frame (a 5k-block shadow pass cannot hold 60 fps). The fit is stable while the camera only orbits.
+   */
+  fitShadows(camera: THREE.Camera, target: THREE.Vector3): boolean {
+    const sunUp = !this.mode.sun || this.mode.sun.altitude > 0;
+    const R = Math.max(64, Math.ceil((this.viewRadius(camera, target) + Math.min(400, this.maxH)) / 32) * 32);
+    const tx = Math.round(target.x / 8) * 8; const tz = Math.round(target.z / 8) * 8;
+    this.sun.updateWorldMatrix(true, false);
+    const pos = this.shadowScratch.pos; this.sun.getWorldPosition(pos);
+    const on = sunUp && R * 2 <= this.sun.shadow.mapSize.x * SHADOW_TEXEL_M;
+    const geo = `${on ? 1 : 0}|${R}|${tx}|${tz}|${Math.round(pos.x)}|${Math.round(pos.y)}|${Math.round(pos.z)}`;
+    const dirty = this.shadowDirty || geo !== this.shadowGeo;
+    this.shadowDirty = false;
+    if (geo === this.shadowGeo) {
+      if (this.sun.castShadow !== on) { this.sun.castShadow = on; return true; }
+      return dirty;
+    }
+    this.shadowGeo = geo;
+    this.sun.castShadow = on;
+    if (!on) return true;
+    const cam = this.sun.shadow.camera as THREE.OrthographicCamera;
+    cam.position.copy(pos); cam.up.set(0, 1, 0);
+    this.sun.target.updateWorldMatrix(true, false);
+    cam.lookAt(this.sun.target.getWorldPosition(this.shadowScratch.at));
+    cam.updateMatrixWorld();
+    const inv = cam.matrixWorldInverse;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    const corner = this.shadowScratch.corner;
+    for (const y of [-2, this.maxH]) {
+      for (const dx of [-R, R]) for (const dz of [-R, R]) {
+        corner.set(tx + dx, y, tz + dz).applyMatrix4(inv);
+        if (corner.x < minX) minX = corner.x; if (corner.x > maxX) maxX = corner.x;
+        if (corner.y < minY) minY = corner.y; if (corner.y > maxY) maxY = corner.y;
+        if (corner.z < minZ) minZ = corner.z; if (corner.z > maxZ) maxZ = corner.z;
+      }
+    }
+    const map = this.sun.shadow.mapSize.x;
+    const snap = (min: number, max: number) => {
+      const texel = Math.max(max - min, 1) / map; const smin = Math.floor(min / texel) * texel;
+      return [smin, smin + Math.ceil((max - smin) / texel) * texel] as const;
+    };
+    const [left, right] = snap(minX, maxX); const [bottom, top] = snap(minY, maxY);
+    cam.left = left; cam.right = right; cam.bottom = bottom; cam.top = top;
+    cam.near = Math.max(0.5, -maxZ - 20); cam.far = Math.max(cam.near + 1, -minZ + 20);
+    cam.updateProjectionMatrix();
+    return true;
   }
 
   // ---------- trains ----------
