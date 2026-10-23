@@ -4,6 +4,6 @@
   "kind": "signature",
   "summary": "Bukit Jalil sports city: the National Sports Complex (National Stadium, Axiata Arena, the National Aquatic Centre), Pavilion Bukit Jalil and Bukit Jalil City, and Bukit Jalil Recreational Park, along the Sri Petaling Line (Bukit Jalil, Awan Besar, Muhibbah).",
   "center": { "lat": 3.056, "lon": 101.678 },
-  "halfSizeM": 1800,
-  "notes": "Study area: 3.6 km x 3.6 km, wider than the other spots because the sports city is spread out. The centre sits between Muhibbah LRT (west, ≈101.6634) and the National Sports Complex (east: National Stadium ≈101.6914, Axiata Arena ≈101.6935, Pusat Akuatik Nasional ≈101.6930), so both ends fit with a margin; Pavilion Bukit Jalil / Bukit Jalil City (≈3.051) and Taman Rekreasi Bukit Jalil (≈3.053) lie in the southern half (Nominatim geocodes of the OpenStreetMap objects, 2026-10-12)."
+  "halfSizeM": 1950,
+  "notes": "Study area: 3.9 km x 3.9 km, wider than the other spots because the sports city is spread out. The centre sits between Muhibbah LRT (west, ≈101.6634) and the National Sports Complex (east: National Stadium ≈101.6914, Axiata Arena ≈101.6935, Pusat Akuatik Nasional ≈101.6930, National Squash Centre ≈101.6944), so both ends fit with a margin; Pavilion Bukit Jalil / Bukit Jalil City (≈3.051) and Taman Rekreasi Bukit Jalil (≈3.053) lie in the southern half. halfSize raised from 1800→1950 so the OSM building 'National Squash Centre' (way/104732878) is inside the east edge (Nominatim / OSM, 2026-10-14)."
 }

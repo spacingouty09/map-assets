@@ -229,9 +229,25 @@ function processArea(id) {
   // ---------- zones (rules.zones: by building / outline name, or by precinct; priority decides) ----------
   const outlineName = new Map(outlines.map((o) => [o.id, o.tags.name]));
   // zone.near: blocks of the given OSM building types within radiusM of a point (e.g. the National Stadium roof, mapped as
-  // hundreds of unnamed building=roof pieces under a leisure=stadium outline that has no building tag)
-  const zoneRules = (rules.zones ?? []).map((z) => ({ ...z, nameSet: new Set(z.names ?? []), nearPt: z.near ? proj(z.near) : null }));
-  const isNear = (zr, b) => !!zr.nearPt && (!zr.near.types || zr.near.types.includes(b.type)) && Math.hypot(b.c[0] - zr.nearPt[0], b.c[1] - zr.nearPt[1]) <= zr.near.radiusM;
+  // hundreds of unnamed building=roof pieces under a leisure=stadium outline that has no building tag).
+  // Optional near.excludeCloserTo { lat, lon }: skip the near match when the block is closer to that point than to near
+  // (e.g. keep stadium roofs in sports but clear unnamed MSN-east roofs that fall inside the same radius).
+  const zoneRules = (rules.zones ?? []).map((z) => ({
+    ...z,
+    nameSet: new Set(z.names ?? []),
+    nearPt: z.near ? proj(z.near) : null,
+    excludeCloserPt: z.near?.excludeCloserTo ? proj(z.near.excludeCloserTo) : null,
+  }));
+  const isNear = (zr, b) => {
+    if (!zr.nearPt || (zr.near.types && !zr.near.types.includes(b.type))) return false;
+    const dNear = Math.hypot(b.c[0] - zr.nearPt[0], b.c[1] - zr.nearPt[1]);
+    if (dNear > zr.near.radiusM) return false;
+    if (zr.excludeCloserPt) {
+      const dEx = Math.hypot(b.c[0] - zr.excludeCloserPt[0], b.c[1] - zr.excludeCloserPt[1]);
+      if (dEx < dNear) return false;
+    }
+    return true;
+  };
   const byPriority = zoneRules.slice().sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
   for (const b of buildings) {
     const parentName = b.parent ? outlineName.get(b.parent) : null;
@@ -345,11 +361,14 @@ function processArea(id) {
     if (e.type === 'way' && e.geometry && t.waterway) {
       for (const seg of clipLine(e.geometry.map(proj))) waterLines.push({ id: e.id, kind: t.waterway, name: t['name:en'] || t.name || null, width: num(t.width), pts: rnd(seg) });
     }
-    const isWater = t.natural === 'water'; const isGreen = ['park', 'garden'].includes(t.leisure) || ['grass', 'recreation_ground'].includes(t.landuse);
+    const isWater = t.natural === 'water';
+    const isGreen = ['park', 'garden', 'pitch', 'track'].includes(t.leisure) || ['grass', 'recreation_ground'].includes(t.landuse);
     if (isWater || isGreen) {
       for (const g of elRings(e)) {
         const ring = clipPolygon(dropClosing(g.map(proj))); if (ring.length < 3) continue;
-        (isWater ? waterAreas : green).push({ id: `${e.type}/${e.id}`, name: t.name || null, ring: rnd(ring) });
+        const label = t.name || (t.leisure === 'track' && t.sport ? `${t.sport} track` : null)
+          || (t.leisure === 'pitch' && t.sport ? `${t.sport} pitch` : null);
+        (isWater ? waterAreas : green).push({ id: `${e.type}/${e.id}`, name: label, ring: rnd(ring) });
       }
     }
   }

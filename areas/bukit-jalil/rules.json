@@ -29,7 +29,12 @@
         "radiusM": 460,
         "types": [
           "roof"
-        ]
+        ],
+        "excludeCloserTo": {
+          "lat": 3.051588,
+          "lon": 101.689363,
+          "note": "Majlis Sukan Negara Malaysia centroid (relation/8555772): unnamed roofs nearer MSN than the stadium stay unzoned"
+        }
       }
     },
     {
@@ -38,7 +43,7 @@
       "precinct": "Bukit Jalil City"
     }
   ],
-  "zoneNotes": "Three building zones (the fourth overview zone, Bukit Jalil Recreational Park, is a green area, not blocks: OSM leisure=park 'Taman Rekreasi Bukit Jalil', way/104732875). (1) Pavilion Bukit Jalil = the OSM building 'Pavilion Bukit Jalil' (way/1010118636, building=retail) and parts inside it; (2) National Sports Complex = the named venues by OSM building name (Unifi Arena, ex-Axiata Arena; the National Squash Centre; Stadium Hoki Nasional; the National Sports Council HQ) plus the building=roof pieces within 460 m of the National Stadium centre (OSM leisure=stadium 'TM Stadium Nasional', way/24691651, has no building tag: its roof and the aquatic centre canopies are mapped as unnamed building=roof pieces); (3) Bukit Jalil City = remaining blocks in the OSM landuse=commercial polygon 'Bukit Jalil City' (way/516568203). Priority decides which rule wins.",
+  "zoneNotes": "Three building zones (the fourth overview zone, Bukit Jalil Recreational Park, is a green area, not blocks: OSM leisure=park 'Taman Rekreasi Bukit Jalil', way/104732875). (1) Pavilion Bukit Jalil = the OSM building 'Pavilion Bukit Jalil' (way/1010118636, building=retail) and parts inside it; (2) National Sports Complex = the named venues by OSM building name (Unifi Arena, ex-Axiata Arena; the National Squash Centre; Stadium Hoki Nasional; the National Sports Council HQ) plus the building=roof pieces within 460 m of the National Stadium centre (OSM leisure=stadium 'TM Stadium Nasional', way/24691651, has no building tag: its roof and the aquatic centre canopies are mapped as unnamed building=roof pieces), except roofs closer to MSN HQ than to the stadium (east unlabelled MSN strip stays context-coloured); (3) Bukit Jalil City = remaining blocks in the OSM landuse=commercial polygon 'Bukit Jalil City' (way/516568203). Priority decides which rule wins.",
   "railLines": [
     [
       "sri petaling",
