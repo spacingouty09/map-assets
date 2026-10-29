@@ -2,7 +2,9 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
-## Unreleased
+## v0.2.2 (2026-10-29)
+
+A new spot and two optional pipeline rules; the API is unchanged and existing spots' data files are byte-for-byte the same as v0.2.1.
 
 - **New spot: KL Sentral** (`kl-sentral`): a 1.2 km square round Stesen Sentral (KA01 / KJ15) with MR1, MR2 and Muzium Negara MRT (KG15). Ten landmark groups: Stesen Sentral, NU Sentral, Hilton & Le Méridien, the office core, St. Regis & The Sentral Residences, Lot J, the south-west lots, Muzium Negara, the temples and churches of Brickfields, and the monorail depot. Also eight walks from the station; point anchors outside the square (Planetarium Negara, the Islamic Arts Museum, Masjid Negara, Perdana Botanical Gardens; Bangsar, Pasar Seni and Kuala Lumpur stations) for direction labels at its edge; cited heights for 5 buildings and a cited `facts.json`. The Kajang Line is drawn in the `py` slot (`rules.railLines`).
 - **Pipeline (optional rules, no effect on existing spots):** zone rules take `ids` (OSM ids, for blocks unnamed in OSM; an outline also brings the building:parts drawn in its place), and cited heights take `osmIds` in place of `osmName` (with a `label` for the log).
