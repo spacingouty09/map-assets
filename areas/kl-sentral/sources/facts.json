@@ -1,0 +1,17 @@
+{
+  "fetched": "2026-10-29",
+  "notes": "Cited facts quoted in websites' text about this area (every number shown must come from data or a cited source). Values as published; fetched on the date above.",
+  "facts": {
+    "development": { "areaM2": 290000, "areaAcres": 72, "lots": 14, "developer": "a consortium led by MRCB (Malaysian Resources Corporation Berhad), with KTMB and Pembinaan Redzai", "site": "the former KTM marshalling yard in Brickfields", "opened": "2001-04-16", "publisher": "Wikipedia – KL Sentral", "url": "https://en.wikipedia.org/wiki/KL_Sentral" },
+    "station": { "opened": "2001-04-16", "erlOpened": "2002-04-14", "etsOpened": "2010-08-12", "skyparkOpened": "2018-05-01", "skyparkSuspended": true, "architect": "Kisho Kurokawa", "floorAreaM2": 46000, "siteAcres": 9.3, "codes": ["KA01", "KS01", "KJ15", "KE1", "KT1"], "publisher": "Wikipedia – KL Sentral station", "url": "https://en.wikipedia.org/wiki/KL_Sentral_station", "note": "The monorail station (MR1) is reached through the NU Sentral mall; there is no paid-area link." },
+    "kg15": { "opened": "2017-07-17", "line": "Kajang Line (9)", "underground": true, "depthM": 25.5, "linkM": 240, "publisher": "Wikipedia – Muzium Negara MRT station", "url": "https://en.wikipedia.org/wiki/Muzium_Negara_MRT_station", "note": "A 240 m covered walkway, partly elevated and partly underground, links the station to KL Sentral (the KL Sentral station article also gives 200 m)." },
+    "nusentral": { "completed": 2014, "lot": "G", "publisher": "Wikipedia – KL Sentral", "url": "https://en.wikipedia.org/wiki/KL_Sentral" },
+    "hilton": { "completed": 2004, "lot": "I", "heightM": 154, "floors": 37, "publisher": "Wikipedia – KL Sentral; List of tallest buildings in Kuala Lumpur", "url": "https://en.wikipedia.org/wiki/KL_Sentral" },
+    "offices": { "lots": ["A", "B", "E"], "cimbHeightM": 162.3, "cimbCompleted": 2012, "qSentralHeightM": 205, "qSentralCompleted": 2014, "platinumCompleted": 2011, "publisher": "Wikipedia – KL Sentral; List of tallest buildings in Kuala Lumpur", "url": "https://en.wikipedia.org/wiki/KL_Sentral" },
+    "stregis": { "lots": ["C", "D"], "stRegisHeightM": 205, "stRegisFloors": 48, "stRegisOpened": 2016, "residencesHeightM": 210.4, "residencesFloors": 58, "residencesCompleted": 2017, "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur", "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur" },
+    "lotj": { "lot": "J", "towersCompleted": 2009, "sookaSentralOpened": 2008, "publisher": "Wikipedia – KL Sentral", "url": "https://en.wikipedia.org/wiki/KL_Sentral" },
+    "southwest": { "lots": ["K", "L", "M"], "plazaSentralCompleted": [2001, 2007], "suasanaSentralCompleted": 2002, "suasanaLoftCompleted": 2008, "publisher": "Wikipedia – KL Sentral", "url": "https://en.wikipedia.org/wiki/KL_Sentral" },
+    "muzium": { "opened": "1963-08-31", "istanaSatuMoved": "1974-04", "publisher": "Wikipedia – National Museum (Malaysia)", "url": "https://en.wikipedia.org/wiki/National_Museum_(Malaysia)" },
+    "kajangColour": { "hex": "#11753A", "publisher": "Wikipedia – Module:Adjacent stations/KLRT", "url": "https://en.wikipedia.org/wiki/Module:Adjacent_stations/KLRT" }
+  }
+}

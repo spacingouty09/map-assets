@@ -4,6 +4,7 @@ import type { RawArea } from './data';
 /** One loader per area; each area's data is its own chunk, fetched only when a site loads that area. */
 export const AREA_LOADERS: Record<string, () => Promise<RawArea>> = {
   'bukit-jalil': () => import('./areas/bukit-jalil.gen').then((m) => m.default),
+  'kl-sentral': () => import('./areas/kl-sentral.gen').then((m) => m.default),
   'klcc': () => import('./areas/klcc.gen').then((m) => m.default),
   'klec-midvalley': () => import('./areas/klec-midvalley.gen').then((m) => m.default),
 };

@@ -1,0 +1,9 @@
+{
+  "id": "kl-sentral",
+  "name": "KL Sentral",
+  "kind": "signature",
+  "summary": "Kuala Lumpur Sentral, the city's main rail hub and business district on the former Brickfields railway yard: Stesen Sentral, NU Sentral, the hotels and office towers of its 14 lots, Muzium Negara and the north of Little India, around KL Sentral (KTM, KLIA Ekspres / Transit, LRT KJ15), the monorail (MR1, MR2) and Muzium Negara MRT (KG15).",
+  "center": { "lat": 3.13325, "lon": 101.68708 },
+  "halfSizeM": 600,
+  "notes": "Study area: 1.2 km x 1.2 km fitted round the OSM outlines of the chosen landmarks (2026-10-29): Lot J and Plaza Sentral in the west, Wisma Monorail and MR2 Tun Sambanthan in the east, Sentral Suites and the KL Monorail depot in the south, Muzium Negara in the north (together 1.07 x 1.11 km), plus a margin. The north of Little India (Jalan Tun Sambanthan) is inside; Perdana Botanical Gardens, Planetarium Negara, the Islamic Arts Museum and Masjid Negara lie beyond the north edge and are left for a view of their own."
+}

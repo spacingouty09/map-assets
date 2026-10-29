@@ -26,6 +26,37 @@
   ]
  },
  {
+  "id": "kl-sentral",
+  "name": "KL Sentral",
+  "kind": "signature",
+  "summary": "Kuala Lumpur Sentral, the city's main rail hub and business district on the former Brickfields railway yard: Stesen Sentral, NU Sentral, the hotels and office towers of its 14 lots, Muzium Negara and the north of Little India, around KL Sentral (KTM, KLIA Ekspres / Transit, LRT KJ15), the monorail (MR1, MR2) and Muzium Negara MRT (KG15).",
+  "center": {
+   "lat": 3.13325,
+   "lon": 101.68708
+  },
+  "halfSizeM": 600,
+  "bbox": {
+   "south": 3.12786,
+   "west": 101.681682,
+   "north": 3.13864,
+   "east": 101.692478
+  },
+  "stations": [
+   "KA01",
+   "KG15",
+   "KJ15",
+   "MR1",
+   "MR2"
+  ],
+  "lines": [
+   "erl",
+   "ktm",
+   "lrt",
+   "mr",
+   "py"
+  ]
+ },
+ {
   "id": "klcc",
   "name": "KLCC",
   "kind": "signature",

@@ -1,0 +1,597 @@
+{
+ "_source": "Overpass API rel(bw) for the KTM track ways of the 2026-10-29 pull (overpass.private.coffee), fetched 2026-10-29 (Asia/Kuala_Lumpur). refs: KTM Komuter route relation ref (1 = Batu Caves–Pulau Sebang Line, OSM name 'Laluan Seremban'; 2 = Tanjung Malim–Port Klang Line, OSM name 'Port Klang Line'). Ways with no single ref take the route of the nearest single-ref KTM way (pipeline/process-osm.mjs).",
+ "ways": {
+  "257575876": {
+   "refs": [],
+   "relations": []
+  },
+  "467550829": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "467550830": {
+   "refs": [],
+   "relations": [
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "557233407": {
+   "refs": [],
+   "relations": [
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "598913923": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "912822251": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)"
+   ]
+  },
+  "1040003206": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban"
+   ]
+  },
+  "1040003207": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1040003208": {
+   "refs": [],
+   "relations": []
+  },
+  "1040003209": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1040003210": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1040122902": {
+   "refs": [],
+   "relations": []
+  },
+  "1040122904": {
+   "refs": [],
+   "relations": []
+  },
+  "1040122905": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1040122906": {
+   "refs": [],
+   "relations": [
+    "relation/1157131 KTM Intercity (Gemas-JB)",
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/8391024 Skypark Link (Eastbound)",
+    "relation/9985660 Skypark Link (Westbound)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1078760451": {
+   "refs": [],
+   "relations": [
+    "relation/1157131 KTM Intercity (Gemas-JB)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "1080229300": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/8390976 Laluan Seremban"
+   ]
+  },
+  "1080229302": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1080229303": {
+   "refs": [],
+   "relations": [
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "1080229304": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1080229305": {
+   "refs": [],
+   "relations": [
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "1080229306": {
+   "refs": [],
+   "relations": []
+  },
+  "1080229319": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/8390976 Laluan Seremban",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1080229320": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1080486949": {
+   "refs": [],
+   "relations": []
+  },
+  "1080486962": {
+   "refs": [],
+   "relations": []
+  },
+  "1080486964": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1080486965": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban"
+   ]
+  },
+  "1084970184": {
+   "refs": [],
+   "relations": []
+  },
+  "1084970185": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1084970186": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1087546657": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1087546658": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546659": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546660": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546661": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546662": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546663": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1087546664": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1087546665": {
+   "refs": [],
+   "relations": [
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "1087546666": {
+   "refs": [],
+   "relations": [
+    "relation/1157131 KTM Intercity (Gemas-JB)"
+   ]
+  },
+  "1087546667": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546668": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546669": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546670": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1087546671": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban",
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1087546672": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban",
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1087546673": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546674": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546675": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban",
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1087546676": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1087546677": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban"
+   ]
+  },
+  "1087546678": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1087546679": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546680": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban"
+   ]
+  },
+  "1087546681": {
+   "refs": [],
+   "relations": []
+  },
+  "1087546682": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/9985660 Skypark Link (Westbound)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1087546684": {
+   "refs": [],
+   "relations": []
+  },
+  "1100750085": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/8390976 Laluan Seremban",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1100750086": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/9985660 Skypark Link (Westbound)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1100750087": {
+   "refs": [],
+   "relations": [
+    "relation/8391024 Skypark Link (Eastbound)"
+   ]
+  },
+  "1100750088": {
+   "refs": [],
+   "relations": []
+  },
+  "1100750089": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/8390976 Laluan Seremban",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1100750091": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/8390976 Laluan Seremban",
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1100750092": {
+   "refs": [
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/9984969 Port Klang Line (southbound)"
+   ]
+  },
+  "1102307418": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/8391024 Skypark Link (Eastbound)",
+    "relation/9985660 Skypark Link (Westbound)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1102307419": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/9985660 Skypark Link (Westbound)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1102307420": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/8391024 Skypark Link (Eastbound)",
+    "relation/9985660 Skypark Link (Westbound)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1102307421": {
+   "refs": [],
+   "relations": [
+    "relation/1157131 KTM Intercity (Gemas-JB)",
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1102307423": {
+   "refs": [
+    "1"
+   ],
+   "relations": [
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1119798079": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/1157131 KTM Intercity (Gemas-JB)",
+    "relation/9984969 Port Klang Line (southbound)",
+    "relation/9985624 Laluan Seremban"
+   ]
+  },
+  "1119798081": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/8390976 Laluan Seremban"
+   ]
+  },
+  "1119798082": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/8390976 Laluan Seremban",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1119798083": {
+   "refs": [],
+   "relations": [
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)"
+   ]
+  },
+  "1119798084": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/14979747 ETS Gold (Gemas - Padang Besar)",
+    "relation/15094256 ETS Gold (KL Sentral - Ipoh)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094258 ETS Gold (Gemas - Butterworth)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1119798085": {
+   "refs": [],
+   "relations": []
+  },
+  "1119798086": {
+   "refs": [],
+   "relations": [
+    "relation/2893526 ETS Gold (Padang Besar - Gemas)",
+    "relation/15094257 ETS Gold (Ipoh - KL Sentral)",
+    "relation/15094259 ETS Gold (Butterworth - Gemas)"
+   ]
+  },
+  "1119798087": {
+   "refs": [],
+   "relations": []
+  },
+  "1119798088": {
+   "refs": [],
+   "relations": [
+    "relation/1157131 KTM Intercity (Gemas-JB)"
+   ]
+  },
+  "1120063764": {
+   "refs": [],
+   "relations": []
+  },
+  "1161395363": {
+   "refs": [
+    "1",
+    "2"
+   ],
+   "relations": [
+    "relation/2565937 Port Klang Line (northbound)",
+    "relation/8390976 Laluan Seremban"
+   ]
+  }
+ }
+}

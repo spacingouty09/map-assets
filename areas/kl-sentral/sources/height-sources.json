@@ -1,0 +1,57 @@
+{
+  "fetched": "2026-10-29",
+  "storeyHeights": {
+    "default": 3.5
+  },
+  "notes": "Heights from the Wikipedia list of tallest buildings in Kuala Lumpur (standard height measurement: spires and architectural details included, antennas excluded; each row cites the CTBUH Skyscraper Center), fetched on the date above. Matched to OSM buildings by OSM name, or by OSM id (osmIds) where the tower has no name in OSM; see height-sources.md.",
+  "buildings": [
+    {
+      "osmName": "Q Sentral",
+      "value": 205,
+      "unit": "m",
+      "floors": 48,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Q Sentral Towers A and B (2014), 205 m and 48 floors each (one height cell shared with the St. Regis). OSM height tag 208 m, 49 levels."
+    },
+    {
+      "osmName": "CIMB Bank Building",
+      "value": 162.3,
+      "unit": "m",
+      "floors": 40,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Listed as 'CIMB Headquarters' (2012). OSM has 41 levels and no height tag."
+    },
+    {
+      "label": "The St. Regis Kuala Lumpur",
+      "osmIds": ["way/591510238", "way/591510239", "way/546288784"],
+      "value": 205,
+      "unit": "m",
+      "floors": 48,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "The St. Regis Kuala Lumpur (2016). The tower is three overlapping unnamed OSM outlines (height tags 205, 207 and 205 m) beside the drop-off roof way/591508971 that holds the hotel point node/4619851015."
+    },
+    {
+      "label": "Hilton Kuala Lumpur",
+      "osmIds": ["way/590933587"],
+      "value": 154,
+      "unit": "m",
+      "floors": 37,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Hilton Kuala Lumpur (2004), 154 m (one height cell shared by four rows) and 37 floors. The unnamed OSM outline way/590933587 holds the hotel point node/995503922 (OSM 120 m, 30 levels); its two lower steps (way/590933588, way/590933590) keep their OSM heights."
+    },
+    {
+      "label": "Le Méridien Kuala Lumpur",
+      "osmIds": ["way/590933603"],
+      "value": 154,
+      "unit": "m",
+      "floors": 37,
+      "publisher": "Wikipedia – List of tallest buildings in Kuala Lumpur",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Kuala_Lumpur",
+      "note": "Le Méridien Kuala Lumpur (2004), 154 m and 37 floors. The unnamed OSM outline way/590933603 holds the hotel point node/1635661887 (OSM 120 m, 30 levels); its two lower steps (way/590933594, way/590933600) keep their OSM heights."
+    }
+  ]
+}
