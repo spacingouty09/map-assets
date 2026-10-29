@@ -2,6 +2,12 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## v0.2.3 (2026-10-29)
+
+A model option; the API is unchanged (one new optional rule) and every spot's data files are byte-for-byte the same as v0.2.2.
+
+- **Model: sculpted sections (KLCC):** `rules.model.shapes` draws a building (by OSM name) with a sculpted section instead of one block: roof and underside profiles along its long axis, facade ribbons that sweep with the roofline, and an optional roof oculus. KLCC lists Plaza Ombak KLCC: the wave crest at the north end, the roof sweeping down to about 20 m at the south end, the southern half cantilevered about 12 m over the Stargazing Plaza, eight facade ribbons and the oval roof opening. Read off photos and KPF's concept sketches; illustrative, under the cited 30 m. Other buildings and spots draw as before.
+
 ## v0.2.2 (2026-10-29)
 
 A new spot and two optional pipeline rules; the API is unchanged and existing spots' data files are byte-for-byte the same as v0.2.1.
