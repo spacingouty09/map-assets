@@ -2,7 +2,7 @@
 // and the sun light. DOM-free: colours come from a Palette, time and motion flags from update(). A site loads an area
 // (loadArea), builds `new MapModel(area)`, adds `model.group` to its own scene and owns the renderer, camera and controls.
 import * as THREE from 'three';
-import type { Area, XY, Building, HeightSource, Route, Zone, Rail, RailLineId } from '../data';
+import type { Area, XY, Building, HeightSource, Route, Zone, Rail, RailLineId, ModelRules } from '../data';
 import { chainWays, chainWaysAnyDir, orientLeftHand, buildTrack, Trains, TRAIN, KTM_TRAIN, MRT_TRAIN, type Track } from './trains';
 import { sunVector } from '../sun';
 import { v3, ribbon, merge, flatShape, routeY } from './geometry';
@@ -56,6 +56,64 @@ export interface UpdateOptions {
 
 const col = (c: string) => new THREE.Color(c || '#ff00ff');
 const inRing = (px: number, pn: number, ring: XY[]) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > pn) !== (yj > pn) && px < ((xj - xi) * (pn - yi)) / (yj - yi) + xi) c = !c; } return c; };
+const extrude = (ring: XY[], base: number, h: number) => { const g = new THREE.ExtrudeGeometry(new THREE.Shape(ring.map(([x, n]) => new THREE.Vector2(x, n))), { depth: h, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, base, 0); return g; };
+type Profile = [number, number][];
+/** A profile at `s` (0…1): smoothstep between its [s, value] points, so it eases in and out of each one. */
+const profileAt = (pr: Profile, s: number) => {
+  if (s <= pr[0][0]) return pr[0][1];
+  for (let i = 1; i < pr.length; i++) if (s <= pr[i][0]) { const [s0, v0] = pr[i - 1], [s1, v1] = pr[i]; const u = (s - s0) / (s1 - s0 || 1); return v0 + (v1 - v0) * u * u * (3 - 2 * u); }
+  return pr[pr.length - 1][1];
+};
+/** A footprint with a sculpted section (rules.model.shapes): along its long (principal) axis, from the `from` end (s = 0)
+ *  to the other (s = 1), the roof follows `top` and the underside `under` (fractions of the height above the base), cut
+ *  into thin strips so the curves read smoothly. `ribbons` facade bands run between underside and roof, so they sweep with
+ *  the roofline; `oculus` draws an oval on the roof, centred on the axis at s = at, sized as fractions of length and width. */
+function shapedBlock(ring: XY[], base: number, h: number, sh: NonNullable<ModelRules['shapes']>[number]) {
+  if (ring.reduce((a, p, i) => { const q = ring[(i + 1) % ring.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0) < 0) ring = ring.slice().reverse(); // CCW: faces out
+  const cx = ring.reduce((s, p) => s + p[0], 0) / ring.length, cn = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+  let sxx = 0, snn = 0, sxn = 0; for (const [x, n] of ring) { sxx += (x - cx) ** 2; snn += (n - cn) ** 2; sxn += (x - cx) * (n - cn); }
+  const a = 0.5 * Math.atan2(2 * sxn, sxx - snn); const want = { north: [0, 1], south: [0, -1], east: [1, 0], west: [-1, 0] }[sh.from];
+  const sg = Math.cos(a) * want[0] + Math.sin(a) * want[1] < 0 ? -1 : 1; const ax = sg * Math.cos(a), an = sg * Math.sin(a); // points to the `from` end
+  const t = (p: XY) => (p[0] - cx) * ax + (p[1] - cn) * an; const ts = ring.map(t); const t0 = Math.max(...ts), t1 = Math.min(...ts);
+  const s = (p: XY) => (t(p) - t0) / (t1 - t0);
+  const w = (p: XY) => -(p[0] - cx) * an + (p[1] - cn) * ax; const ws = ring.map(w); const wMid = (Math.max(...ws) + Math.min(...ws)) / 2, wHalf = (Math.max(...ws) - Math.min(...ws)) / 2;
+  const top = (p: XY) => base + h * profileAt(sh.top, s(p)), bot = (p: XY) => base + h * profileAt(sh.under ?? [[0, 0]], s(p));
+  const clip = (poly: XY[], f: (p: XY) => number) => { // keep where f >= 0
+    const out: XY[] = [];
+    poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length], fp = f(p), fq = f(q); if (fp >= 0) out.push(p); if ((fp >= 0) !== (fq >= 0)) { const k = fp / (fp - fq); out.push([p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k]); } });
+    return out;
+  };
+  const pos: number[] = [], lines: number[] = [];
+  const tri = (a: number[], b: number[], c: number[]) => pos.push(...a, ...b, ...c);
+  const P = (p: XY, y: number) => [p[0], y, -p[1]];
+  const N = 48;
+  for (let i = 0; i < N; i++) {
+    const sa = i / N, sb = (i + 1) / N;
+    const poly = clip(clip(ring, (p) => s(p) - sa), (p) => sb - s(p)); if (poly.length < 3) continue;
+    for (const [i0, i1, i2] of THREE.ShapeUtils.triangulateShape(poly.map(([x, n]) => new THREE.Vector2(x, n)), [])) {
+      const [p0, p1, p2] = [poly[i0], poly[i1], poly[i2]];
+      tri(P(p0, top(p0)), P(p1, top(p1)), P(p2, top(p2))); // roof (ring is CCW: faces up)
+      tri(P(p0, bot(p0)), P(p2, bot(p2)), P(p1, bot(p1))); // underside
+    }
+    poly.forEach((p, j) => {
+      const q = poly[(j + 1) % poly.length], ps = s(p), qs = s(q);
+      if ((Math.abs(ps - sa) < 1e-6 && Math.abs(qs - sa) < 1e-6) || (Math.abs(ps - sb) < 1e-6 && Math.abs(qs - sb) < 1e-6)) return; // cut between strips
+      const pb = P(p, bot(p)), qb = P(q, bot(q)), qt = P(q, top(q)), pt = P(p, top(p));
+      tri(pb, qb, qt); tri(pb, qt, pt);
+      lines.push(...pt, ...qt, ...pb, ...qb);
+      // facade ribbons: evenly spaced between underside and roof, so they rise and fall with the section
+      for (let k = 1; k < sh.ribbons; k++) { const f = k / sh.ribbons; lines.push(p[0], pb[1] + (pt[1] - pb[1]) * f, -p[1], q[0], qb[1] + (qt[1] - qb[1]) * f, -q[1]); }
+    });
+  }
+  if (sh.oculus) {
+    const tc = t0 + (t1 - t0) * sh.oculus.at, ra = (sh.oculus.size[0] * (t0 - t1)) / 2, rw = sh.oculus.size[1] * wHalf;
+    const pt = (k: number): XY => { const th = (k / 48) * Math.PI * 2, u = tc + ra * Math.cos(th), v = wMid + rw * Math.sin(th); return [cx + u * ax - v * an, cn + u * an + v * ax]; };
+    for (let k = 0; k < 48; k++) { const a0 = pt(k), a1 = pt(k + 1); lines.push(...P(a0, top(a0) + 0.3), ...P(a1, top(a1) + 0.3)); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  const e = new THREE.BufferGeometry(); e.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+  return { g, edges: e };
+}
 
 interface BMesh { data: Building; mesh: THREE.Mesh; edges: THREE.LineSegments; key: boolean }
 
@@ -194,16 +252,17 @@ export class MapModel {
       return this.ktmTracks.some((t) => { for (let i = t.inStart; i <= t.inEnd; i += 2) { const x = t.x[i], n = -t.z[i]; if (!t.hide[i] && x >= x0 && x <= x1 && n >= n0 && n <= n1 && inRing(x, n, b.ring)) return true; } return false; });
     };
     const KTM_CLEAR = 5, SLAB = 0.6;
-    // buildings
+    // buildings (rules.shapes: sculpted section)
+    const shapes = new Map((rules.shapes ?? []).map((s) => [s.building, s]));
     for (const b of buildings) {
       let base = b.minHeight;
       if (b.minHeight < KTM_CLEAR && b.height > 4.6 && coversKtm(b)) base = Math.max(b.minHeight, b.type === 'roof' ? b.height - SLAB : Math.min(KTM_CLEAR, b.height - SLAB));
       const h = Math.max(1, b.height - base);
-      const shape = new THREE.Shape(b.ring.map(([x, n]) => new THREE.Vector2(x, n)));
-      const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
-      g.rotateX(-Math.PI / 2); g.translate(0, base, 0);
+      const sh = b.name ? shapes.get(b.name) : undefined;
+      const shaped = sh ? shapedBlock(b.ring, base, h, sh) : null;
+      const g = shaped ? shaped.g : extrude(b.ring, base, h);
       const mesh = new THREE.Mesh(g, this.mats.build); mesh.castShadow = true; mesh.receiveShadow = true;
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), this.mats.edgeKey);
+      const edges = new THREE.LineSegments(shaped ? shaped.edges : new THREE.EdgesGeometry(g, 25), this.mats.edgeKey);
       const key = !!b.precinct || !!b.station || b.height >= 45;
       this.bmeshes.push({ data: b, mesh, edges, key });
       this.group.add(mesh, edges);
