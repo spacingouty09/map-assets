@@ -80,6 +80,11 @@ export interface ModelRules {
   undergroundStops?: Partial<Record<RailLineId, string>>;
   /** green areas (OSM name) whose ground-level paths are part of the base map, drawn in every view like the roads */
   parkPaths?: string[];
+  /** buildings (OSM name) drawn with a sculpted section instead of one block, e.g. a wave-shaped mall: along the long
+   *  axis from the `from` end (0) to the other (1), the roof follows `top` and the underside `under` ([position, fraction of
+   *  the height] points, eased between). `ribbons` facade bands sweep with the section; `oculus` marks an oval roof opening
+   *  centred on the axis at `at`, `size` = [fraction of length, fraction of width]. Illustrative; heights stay as cited. */
+  shapes?: { building: string; from: 'north' | 'south' | 'east' | 'west'; top: [number, number][]; under?: [number, number][]; ribbons: number; oculus?: { at: number; size: [number, number] } }[];
 }
 export interface AreaRules { model?: ModelRules; [key: string]: unknown }
 /** One entry of the spot index (areas/index.json). */
