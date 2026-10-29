@@ -209,7 +209,7 @@ function processArea(id) {
     const h = src.unit === 'm' ? src.value : src.value * storey;
     const ref = { value: src.value, unit: src.unit, floors: src.floors ?? (src.unit === 'floors' ? src.value : null), storeyHeight: storey, publisher: src.publisher, url: src.url, fetched: src.fetched ?? HS.fetched, note: src.note, ctbuhEstimated: !!src.ctbuhEstimated };
     const applied = [];
-    for (const b of buildings.filter((x) => x.name === src.osmName)) {
+    for (const b of buildings.filter((x) => (src.osmName && x.name === src.osmName) || src.osmIds?.includes(x.id))) { // osmIds: towers unnamed in OSM
       applied.push({ id: b.id, from: `${b.height} m (${b.heightSource})` });
       Object.assign(b, { height: r1(h), heightSource: 'cited', heightRef: ref }); delete b.heightNote;
     }
@@ -223,19 +223,20 @@ function processArea(id) {
         }
       }
     }
-    citedLog.push({ name: src.osmName, height: r1(h), applied });
+    citedLog.push({ name: src.osmName ?? src.label, height: r1(h), applied });
   }
 
   // ---------- zones (rules.zones: by building / outline name, or by precinct; priority decides) ----------
   const outlineName = new Map(outlines.map((o) => [o.id, o.tags.name]));
   // zone.near: blocks of the given OSM building types within radiusM of a point (e.g. the National Stadium roof, mapped as
   // hundreds of unnamed building=roof pieces under a leisure=stadium outline that has no building tag)
-  const zoneRules = (rules.zones ?? []).map((z) => ({ ...z, nameSet: new Set(z.names ?? []), nearPt: z.near ? proj(z.near) : null }));
+  // zone.ids: unnamed blocks by OSM id (an outline also takes the building:parts drawn in its place)
+  const zoneRules = (rules.zones ?? []).map((z) => ({ ...z, nameSet: new Set(z.names ?? []), idSet: new Set(z.ids ?? []), nearPt: z.near ? proj(z.near) : null }));
   const isNear = (zr, b) => !!zr.nearPt && (!zr.near.types || zr.near.types.includes(b.type)) && Math.hypot(b.c[0] - zr.nearPt[0], b.c[1] - zr.nearPt[1]) <= zr.near.radiusM;
   const byPriority = zoneRules.slice().sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
   for (const b of buildings) {
     const parentName = b.parent ? outlineName.get(b.parent) : null;
-    const z = byPriority.find((zr) => (zr.names && (zr.nameSet.has(b.name) || zr.nameSet.has(parentName))) || (zr.precinct && b.precinct === zr.precinct) || isNear(zr, b));
+    const z = byPriority.find((zr) => (zr.names && (zr.nameSet.has(b.name) || zr.nameSet.has(parentName))) || zr.idSet.has(b.id) || (b.parent && zr.idSet.has(b.parent)) || (zr.precinct && b.precinct === zr.precinct) || isNear(zr, b));
     b.zone = z ? z.id : null;
   }
   // footprint per zone: union of block footprints rasterised on a 1 m grid (overlapping parts counted once)

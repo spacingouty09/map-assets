@@ -1,0 +1,9 @@
+{
+  "fetched": "2026-10-29",
+  "notes": "Cited corrections to OSM tags for this area (replaced before processing). Station codes: OSM leaves the code off some station objects or lists several on one, and the pipeline finds a station by its exact ref.",
+  "overrides": {
+    "way/638688527": { "tags": { "ref": "KA01" }, "reason": "OSM ref 'KA01;KJ15;ERL' lists every service of the KL Sentral station building; the LRT has its own station node (KJ15), so the building keeps the KTM Komuter code KA01.", "publisher": "Wikipedia – KL Sentral station", "url": "https://en.wikipedia.org/wiki/KL_Sentral_station" },
+    "node/5391767170": { "tags": { "ref": "KJ15" }, "reason": "OSM has the code only in the name ('KJ15 KL Sentral'), not in ref.", "publisher": "Wikipedia – KL Sentral station", "url": "https://en.wikipedia.org/wiki/KL_Sentral_station" },
+    "way/24375045": { "tags": { "ref": "MR1" }, "reason": "OSM has the code only in the name ('MR1 KL Sentral (Monorail)'), not in ref.", "publisher": "Wikipedia – KL Sentral monorail station", "url": "https://en.wikipedia.org/wiki/KL_Sentral_monorail_station" }
+  }
+}

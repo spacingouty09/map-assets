@@ -1,0 +1,61 @@
+{
+  "precincts": ["Suasana Sentral Loft", "Suasana Sentral Condominium", "Sentral Suites", "KL Sentral"],
+  "zones": [
+    { "id": "stesen", "priority": 1, "names": ["KL Sentral"] },
+    { "id": "nusentral", "priority": 2, "names": ["Nu Sentral", "NU Tower 2", "Menara Allianz Sentral"], "ids": ["way/467550547", "way/591453819", "way/591453820", "way/591453821", "way/591453823", "way/591453824", "way/591453825", "way/591453826"] },
+    { "id": "hilton", "priority": 3, "ids": ["relation/8660558", "way/590933587", "way/590933588", "way/590933589", "way/590933590", "way/590933594", "way/590933600", "way/590933603"] },
+    { "id": "offices", "priority": 4, "names": ["CIMB Bank Building", "Q Sentral", "Platinum Sentral"], "ids": ["way/180163650", "way/591508968", "way/591508969", "way/591508972", "way/591508973", "way/591508974"] },
+    { "id": "stregis", "priority": 5, "names": ["The Sentral Residences"], "ids": ["way/323295037", "way/591508971", "way/591510238", "way/591510239", "way/546288784", "way/624121147", "way/624121148"] },
+    { "id": "lotj", "priority": 6, "names": ["Axiata Tower", "Menara SSM", "Menara UEM"], "ids": ["way/467550703", "way/467550543", "way/467550546", "way/591939813", "way/591939814", "way/591939816"] },
+    { "id": "southwest", "priority": 7, "names": ["Plaza Sentral, Tower 1B", "Menara TH 1 Sentral", "Menara Shell"], "ids": ["way/467770078", "way/590628862", "way/590628863", "way/590628864", "way/590629709", "way/590632287", "way/590632288", "way/590632289", "way/591472163", "way/591472164", "way/591472165", "way/591472166", "way/591472167", "way/591472168", "way/591472169", "way/591472170", "way/591472171", "way/591472172", "way/591472173", "way/591472174", "way/591472175", "way/591472176", "way/591472177", "way/591472178", "way/591472179", "way/591472180", "way/591472181", "way/591472182", "way/591472183", "way/591472184", "way/591472185", "way/591472186", "way/591472187", "way/591472188", "way/591947716", "way/591947718"] },
+    { "id": "southwest", "priority": 8, "precinct": "Suasana Sentral Loft" },
+    { "id": "southwest", "priority": 8, "precinct": "Suasana Sentral Condominium" },
+    { "id": "southwest", "priority": 8, "precinct": "Sentral Suites" },
+    { "id": "muzium", "priority": 9, "names": ["Muzium Negara", "Muzium Etnologi Dunia Melayu", "Istana 1", "Jabatan Muzium Negara", "Museum Management", "321.01", "531.01", "Seri Menanti 22102"] },
+    { "id": "brickfields", "priority": 10, "names": ["Vivekananda Ashram", "Tokong Sam Kow Tong", "Zion Cathedral", "Tamil Methodist Church", "Kovil Sri Sakthi Vinayagar", "Buddhist Maha Vihara Buddha Hall", "Buddhist Maha Vihara Administration Building", "International Buddhist Pagoda", "Standing Buddha", "Wisma Dharma Chakra", "Wisma Sri Dhamma", "Wisma Sri Dhamma Annexe"] },
+    { "id": "depot", "priority": 11, "names": ["KL Monorail Depot", "Wisma Monorail"] }
+  ],
+  "zoneNotes": "Chapter 01 Landmarks, the ten groups chosen on 2026-10-29, by OSM building name (an outline and the building:parts drawn in its place), by OSM id where the block is unnamed in OSM, or by landuse precinct. (1) Stesen Sentral (Lot H): the station building 'KL Sentral' (way/638688527). (2) NU Sentral (Lot G): the mall, NU Tower 2, Menara Allianz Sentral, the unnamed 25-level tower that holds the Aloft hotel (way/467550547, the OSM hotel point node/4619829502 lies inside it) and the unnamed blocks and roofs at its foot (way/5914538xx). (3) Hilton & Le Méridien (Lot I): the shared six-level podium relation/8660558 and the two stepped towers on it, unnamed in OSM; the hotel points node/995503922 (Hilton) and node/1635661887 (Le Méridien) lie inside way/590933587 and way/590933603. (4) Office core (Lots A, B, E): CIMB Bank Building, Q Sentral and Platinum Sentral, plus the unnamed 40-level office block beside CIMB (way/180163650) and the small blocks and roofs inside the Q Sentral outline. (5) St Regis & The Sentral Residences (Lots C, D): The Sentral Residences (two towers mapped as parts), its unnamed crown blocks, and the unnamed 205–207 m tower blocks of the St Regis with its hotel wing (way/323295037, building=hotel) and drop-off roof (way/591508971 holds the hotel point node/4619851015). (6) Lot J: Axiata Tower, Menara SSM, Menara UEM, the unnamed 35-level office tower between them (way/467550703) and the low blocks at their foot. (7) South-west lots (K–N, Lot 348): Plaza Sentral, Menara TH 1 Sentral, Menara Shell, the unnamed block of the Ascott Sentral (way/467770078 holds the hotel point node/4623708808), the other unnamed blocks and roofs of the 'KL Sentral' landuse polygon south-west of Jalan Stesen Sentral 5 (centre west of x = -180 m and south of y = -40 m: the 15-level Plaza Sentral blocks and the Menara Shell / Ascott podium roofs), and the blocks in the landuse polygons 'Suasana Sentral Loft', 'Suasana Sentral Condominium' and 'Sentral Suites'. (8) Muzium Negara: the museum and the buildings in its grounds named in OSM (the Malay World Ethnology Museum, Istana Satu, the museum offices and the three locomotives on show). (9) Little India / Brickfields: the places of worship inside the square. (10) The KL Monorail depot and Wisma Monorail. Priority decides which rule wins; the order of the list is the order of meta.zones.",
+  "anchors": [
+    { "id": "KA01", "label": "KL Sentral (KA01)", "station": "KA01" },
+    { "id": "MR1", "label": "KL Sentral Monorail (MR1)", "station": "MR1" },
+    { "id": "KG15", "label": "Muzium Negara MRT (KG15)", "station": "KG15" },
+    { "id": "MUZIUM", "label": "Muzium Negara", "building": "Muzium Negara" },
+    { "id": "PLAZA", "label": "Plaza Sentral", "building": "Plaza Sentral, Tower 1B" },
+    { "id": "STREGIS", "label": "The St. Regis Kuala Lumpur", "point": { "lat": 3.1366351, "lon": 101.6887576 } },
+    { "id": "HILTON", "label": "Hilton & Le Méridien", "point": { "lat": 3.1352656, "lon": 101.6857595 } },
+    { "id": "LITTLEINDIA", "label": "Little India", "point": { "lat": 3.1290537, "lon": 101.6840403 } },
+    { "id": "PLANETARIUM", "label": "Planetarium Negara", "point": { "lat": 3.139486, "lon": 101.6893032 } },
+    { "id": "IAMM", "label": "Islamic Arts Museum Malaysia", "point": { "lat": 3.1414518, "lon": 101.6897523 } },
+    { "id": "MASJIDNEGARA", "label": "Masjid Negara", "point": { "lat": 3.1419718, "lon": 101.6916776 } },
+    { "id": "PERDANA", "label": "Perdana Botanical Gardens", "point": { "lat": 3.1437769, "lon": 101.6843465 } },
+    { "id": "KJ16", "label": "Bangsar LRT (KJ16)", "point": { "lat": 3.1274505, "lon": 101.6790186 } },
+    { "id": "KJ14_KG16", "label": "Pasar Seni LRT / MRT (KJ14 / KG16)", "point": { "lat": 3.1424372, "lon": 101.6953065 } },
+    { "id": "KA02", "label": "Kuala Lumpur KTM (KA02)", "point": { "lat": 3.1407737, "lon": 101.6937665 } }
+  ],
+  "anchorNotes": "Points read off OSM: STREGIS = the hotel point node/4619851015 (its tower is unnamed in OSM); HILTON = the Hilton hotel point node/995503922; LITTLEINDIA = the tourism=attraction point 'Little India' node/4327707896 on Jalan Tun Sambanthan. Outside the square, for the direction arrows at its edge (2026-10-29: the Perdana Botanical Gardens get a view of their own): PLANETARIUM = node/7221496859, IAMM = the centre of way/659878360 (Muzium Kesenian Islam Malaysia), MASJIDNEGARA = the centre of way/585264338, PERDANA = the centre of way/111547419 (Taman Botani Perdana). The next stations beyond the edge, for labels at it: KJ16 = Bangsar (way/24375064), KJ14_KG16 = Pasar Seni LRT (way/141466517; the Kajang Line station KG16, way/28224155, is ~100 m east of it), KA02 = Kuala Lumpur (way/1161395359), each the centre of its railway=station outline (Overpass, 2026-10-29). Routes snap to the nearest mapped pedestrian node.",
+  "walks": [
+    ["w-sentral-mr1", "KA01", "MR1"],
+    ["w-sentral-kg15", "KA01", "KG15"],
+    ["w-sentral-stregis", "KA01", "STREGIS"],
+    ["w-sentral-hilton", "KA01", "HILTON"],
+    ["w-sentral-muzium", "KA01", "MUZIUM"],
+    ["w-sentral-plaza", "KA01", "PLAZA"],
+    ["w-sentral-littleindia", "KA01", "LITTLEINDIA"],
+    ["w-mr1-littleindia", "MR1", "LITTLEINDIA"]
+  ],
+  "walkNotes": "The eight walks chosen on 2026-10-29: KL Sentral to the monorail through NU Sentral (no paid-area link), to Muzium Negara MRT, to the St Regis (through Platinum Sentral and the Q Sentral linkway), to Hilton & Le Méridien (the footbridge signed 'To Hilton & Le Meridien'), to the museum, to Plaza Sentral past Lot J, and to Little India; and the monorail to Little India along Jalan Tun Sambanthan. Each starts at the centre of the station building or the station.",
+  "railLines": [["kajang", "py"], ["^$", "mr"]],
+  "railLineNotes": "The Kajang Line (OSM 'Laluan Kajang', in tunnel here) has no line id of its own in the model: it is drawn in the MRT slot ('py'), which the website colours as the Kajang Line for this spot. The only unnamed rail ways in the pull are the 12 KL Monorail depot tracks (railway=monorail, service=yard), so an empty name means the monorail.",
+  "ktmRoutes": "raw/ktm-routes.json",
+  "ktmRouteNotes": "The Overpass pull has no route relations, so the KTM Komuter line of each track way was looked up once with Overpass (rel(bw) for the 81 KTM ways, 2026-10-29): ref 1 = Batu Caves–Pulau Sebang Line, ref 2 = Tanjung Malim–Port Klang Line. The station tracks that both lines use, and the ways in no Komuter relation (ETS and Intercity tracks, crossovers, the Skypark Link), take the line of the nearest single-ref KTM way.",
+  "railLengths": ["lrt", "ktm", "erl", "py", "mr"],
+  "model": {
+    "lrtStop": "KJ15",
+    "ktm": [{ "route": 1, "stop": "KA01" }, { "route": 2, "stop": "KA01" }],
+    "skyparkOnKtmRoute": 2,
+    "undergroundStops": { "py": "KG15" },
+    "precinctOutlines": ["KL Sentral"]
+  },
+  "modelNotes": "lrtStop: KJ15, where LRT trains stop (the elevated Kelana Jaya Line station on the east side of Stesen Sentral). ktm: both Komuter lines stop at KL Sentral (KA01). skyparkOnKtmRoute: the suspended KL Sentral–Terminal Skypark Line (10) started here and used the Line 2 tracks (OSM relations 9985660 / 8391024); it is drawn as a dashed overlay beside them. undergroundStops: Kajang Line trains stop at Muzium Negara (KG15) in the underground view. precinctOutlines: the OSM landuse polygon 'KL Sentral' (way/1082480356, the development on the former railway yard) is drawn as a dashed outline."
+}
