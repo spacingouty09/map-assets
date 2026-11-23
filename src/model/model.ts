@@ -210,7 +210,14 @@ export class MapModel {
     const H = this.area.meta.halfSizeM;
     const rules = this.area.rules.model ?? {};
     for (const z of this.area.zones) if (!this.mats.zone[z]) this.mats.zone[z] = new THREE.MeshLambertMaterial(); // zones beyond the default three
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.mats.ground);
+    // a study area wider than 2.4 km (KLIA, 8.5 km) is seen from far away, where the flat layers' few-cm lifts above the
+    // ground are below the depth buffer's resolution and flicker: there the ground covers the whole square and each flat
+    // layer gets its own polygon offset (green < roads < major roads < water < park paths). The city spots are unchanged.
+    const wide = H > 1200;
+    if (wide) ([[this.mats.green, 1], [this.mats.road, 2], [this.mats.roadMajor, 3], [this.mats.water, 4], [this.mats.parkPath, 5]] as const)
+      .forEach(([m, f]) => Object.assign(m, { polygonOffset: true, polygonOffsetFactor: -f, polygonOffsetUnits: -4 * f }));
+    const groundSize = wide ? Math.ceil(2.4 * H) : 6000;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), this.mats.ground);
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.group.add(ground);
 
     // study-area frame
