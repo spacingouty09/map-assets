@@ -7,4 +7,5 @@ export const AREA_LOADERS: Record<string, () => Promise<RawArea>> = {
   'kl-sentral': () => import('./areas/kl-sentral.gen').then((m) => m.default),
   'klcc': () => import('./areas/klcc.gen').then((m) => m.default),
   'klec-midvalley': () => import('./areas/klec-midvalley.gen').then((m) => m.default),
+  'klia': () => import('./areas/klia.gen').then((m) => m.default),
 };

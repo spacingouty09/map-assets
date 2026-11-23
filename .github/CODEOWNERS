@@ -9,6 +9,7 @@
 /areas/klcc/              @spacingouty09
 /areas/bukit-jalil/       @noowxela
 /areas/kl-sentral/        @spacingouty09
+/areas/klia/              @spacingouty09
 
 # the generated spot index and loaders change with every spot
 /areas/index.json         @spacingouty09 @noowxela

@@ -1,0 +1,6 @@
+{
+  "fetched": "2026-11-23",
+  "storeyHeights": { "default": 3.5 },
+  "notes": "No cited heights yet. The control towers keep their OSM heights (KUL ATC Tower East and Tower West are mapped as stacked building:parts up to 130 m and 133.8 m). The terminals, gateway@klia2, Mitsui Outlet Park and the circuit buildings use OSM building:levels or the pipeline estimate; their heights are open items.",
+  "buildings": []
+}

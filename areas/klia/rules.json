@@ -1,0 +1,43 @@
+{
+  "precincts": [],
+  "zones": [
+    { "id": "t1", "priority": 1, "names": ["KLIA Terminal 1 (Main Building)"] },
+    { "id": "satellite", "priority": 2, "names": ["KLIA Terminal 1 (Satellite Building)"] },
+    { "id": "klia2", "priority": 3, "names": ["KLIA Terminal 2", "KLIA Terminal 2 (Main Building)", "KLIA Terminal 2 (Satellite Building)", "Pier J (Domestic)", "Pier K,L (Domestic/International)", "Pier P (International)", "Pier Q (International)", "Skybridge"] },
+    { "id": "gateway", "priority": 4, "names": ["Gateway@klia2", "KLIA Terminal 2 Transportation Hub", "Medan Kereta"] },
+    { "id": "airasia", "priority": 5, "names": ["AirAsia RedQ", "Tune KLIA2"] },
+    { "id": "atc", "priority": 6, "names": ["KUL ATC Tower East", "KUL ATC Tower West", "KUL Apron Tower"] },
+    { "id": "samasama", "priority": 7, "names": ["Sama-Sama"] },
+    { "id": "cargo", "priority": 8, "names": ["Cargo Terminal", "Komplex Kastam KLIA Cargo Village", "Alibaba CAI NIAO KLIA Cargo", "Malaysia Airports Centralised Automated Warehouse"] },
+    { "id": "mitsui", "priority": 9, "names": ["Mitsui Outlet Park KLIA Sepang"] },
+    { "id": "circuit", "priority": 10, "names": ["Main Grandstand", "Paddock / Pit Building", "F Grandstand", "K1 Grandstand", "South Padock"] }
+  ],
+  "zoneNotes": "Chapter 01 Landmarks: the groups the person picked on 2026-11-23 (candidate map), by OSM building name from the Overpass pull of 2026-11-23. (1) Terminal 1 main building (relation/6848621). (2) The Satellite Building (relation/4504617), linked to Terminal 1 by the Aerotrain. (3) klia2: the terminal (relation/13829161), its main and satellite buildings, the four piers and the skybridge. (4) gateway@klia2 with the transport hub roof and the Medan Kereta car park. (5) AirAsia: RedQ headquarters and the Tune hotel at klia2. (6) The control towers: KUL ATC Tower East (119 m in OSM), ATC Tower West and the apron tower. (7) Sama-Sama Hotel by Terminal 1. (8) The cargo area (OSM names, incl. 'Malaysia Airports Centralised Automated Warehouse'). (9) Mitsui Outlet Park KLIA Sepang. (10) The Sepang International Circuit grandstands and pit building ('South Padock' is the OSM spelling). The former LCCT and the airport mosque are not picked; The runways, taxiways, aprons and the race track are drawn from OSM aeroway=runway|taxiway|apron and highway=raceway (pull of 2026-11-23), not as zones.",
+  "landmarks": [
+    { "name": "KLIA Terminal 1 (Main Building)", "kind": "terminal" },
+    { "name": "KLIA Terminal 1 (Satellite Building)", "kind": "terminal" },
+    { "name": "KLIA Terminal 2 (Main Building)", "kind": "terminal" },
+    { "name": "KUL ATC Tower East", "kind": "tower" },
+    { "name": "Gateway@klia2", "kind": "mall" },
+    { "name": "Mitsui Outlet Park KLIA Sepang", "kind": "mall" },
+    { "name": "Paddock / Pit Building", "kind": "circuit" }
+  ],
+  "landmarkNotes": "Selected by OSM name (Overpass, 2026-11-23): the two terminals and the Satellite Building, the tallest control tower, the two malls and the circuit's pit building.",
+  "anchors": [
+    { "id": "T1", "label": "KLIA Terminal 1", "building": "KLIA Terminal 1 (Main Building)" },
+    { "id": "T2", "label": "klia2", "building": "KLIA Terminal 2 (Main Building)" },
+    { "id": "GATEWAY", "label": "gateway@klia2", "building": "Gateway@klia2" },
+    { "id": "REDQ", "label": "AirAsia RedQ", "building": "AirAsia RedQ" },
+    { "id": "SAMASAMA", "label": "Sama-Sama Hotel", "building": "Sama-Sama" }
+  ],
+  "anchorNotes": "Walk ends at the centre of each OSM building outline (Overpass, 2026-11-23). Routes snap to the nearest mapped pedestrian node. The ERL stations (KLIA T1 node/6763983630, KLIA T2 way/1033454811) carry no ref tag in OSM, so they are not used as station anchors.",
+  "walks": [
+    ["w-t1-samasama", "T1", "SAMASAMA"],
+    ["w-t2-gateway", "T2", "GATEWAY"],
+    ["w-gateway-redq", "GATEWAY", "REDQ"]
+  ],
+  "walkNotes": "Three walks: Terminal 1 to the Sama-Sama hotel along the covered link, klia2 to gateway@klia2, and gateway@klia2 to AirAsia RedQ. The terminals are 2 km apart and linked by the KLIA Ekspres / Transit, not on foot.",
+  "railLengths": ["erl"],
+  "model": {},
+  "modelNotes": "The ERL (KLIA Ekspres and KLIA Transit, OSM name 'ERL') is matched by the shared rail list as 'erl'. The Aerotrain between Terminal 1 and the Satellite Building (OSM railway=monorail 'APM', partly in tunnel) has no line id of its own and is kept as 'other'."
+}

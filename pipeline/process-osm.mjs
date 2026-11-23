@@ -322,6 +322,10 @@ function processArea(id) {
   const ROAD_W = { motorway: 14, trunk: 14, primary: 12, secondary: 10, tertiary: 8, motorway_link: 7, trunk_link: 7, primary_link: 7, secondary_link: 6, tertiary_link: 6, residential: 6, unclassified: 6, service: 4 };
   const PED = new Set(['footway', 'pedestrian', 'steps', 'path', 'corridor']);
   const roads = [], rails = [], footways = [], waterLines = [], green = [];
+  // airfields and race tracks (OSM aeroway=runway|taxiway|apron, highway=raceway): a centre line with a width, or an area
+  // (aprons; a runway or taxiway tagged area=yes). Written to lines.json only where the area has any (KLIA).
+  const aeroways = [];
+  const AERO_W = { runway: 45, taxiway: 23, raceway: 15 };
   const waterAreas = [];
   for (const e of els) {
     const t = T(e);
@@ -342,6 +346,15 @@ function processArea(id) {
     }
     if (e.type === 'way' && e.geometry && ['light_rail', 'rail', 'subway', 'monorail'].includes(t.railway)) {
       for (const seg of clipLine(e.geometry.map(proj))) rails.push({ id: e.id, line: lineOf(t), name: t.name || null, elevated: yes(t.bridge) || (num(t.layer) || 0) > 0, tunnel: t.tunnel === 'yes', layer: num(t.layer) || 0, service: t.service || null, pts: rnd(seg) });
+    }
+    const aero = t.aeroway && ['runway', 'taxiway', 'apron'].includes(t.aeroway) ? t.aeroway : t.highway === 'raceway' ? 'raceway' : null;
+    if (aero) {
+      const base = { id: `${e.type}/${e.id}`, kind: aero, ref: t.ref || null, name: t.name || null };
+      if (aero === 'apron' || t.area === 'yes') {
+        for (const g of elRings(e)) { const ring = clipPolygon(dropClosing(g.map(proj))); if (ring.length >= 3) aeroways.push({ ...base, width: null, area: true, pts: rnd(ring) }); }
+      } else if (e.type === 'way' && e.geometry) {
+        for (const seg of clipLine(e.geometry.map(proj))) aeroways.push({ ...base, width: num(t.width) ?? AERO_W[aero], area: false, pts: rnd(seg) });
+      }
     }
     if (e.type === 'way' && e.geometry && t.waterway) {
       for (const seg of clipLine(e.geometry.map(proj))) waterLines.push({ id: e.id, kind: t.waterway, name: t['name:en'] || t.name || null, width: num(t.width), pts: rnd(seg) });
@@ -548,7 +561,7 @@ function processArea(id) {
   w('meta.json', meta);
   w('buildings.json', buildings);
   w('landmarks.json', landmarks);
-  w('lines.json', { roads, rails, footways: footways.map((f) => ({ ...f, pts: rnd(f.pts) })), waterLines });
+  w('lines.json', { roads, rails, footways: footways.map((f) => ({ ...f, pts: rnd(f.pts) })), waterLines, ...(aeroways.length ? { aeroways } : {}) });
   w('areas.json', { waterAreas, green, precincts });
   w('stations.json', stations);
   w('named-outlines.json', outlineIndex);

@@ -111,5 +111,29 @@
    "ktm",
    "lrt"
   ]
+ },
+ {
+  "id": "klia",
+  "name": "KLIA",
+  "kind": "signature",
+  "summary": "Kuala Lumpur International Airport in Sepang: Terminal 1 and its Satellite Building, klia2 and gateway@klia2, the control tower and runways, Mitsui Outlet Park KLIA Sepang and the Sepang International Circuit, around the KLIA and klia2 stations of the KLIA Ekspres and KLIA Transit.",
+  "center": {
+   "lat": 2.745,
+   "lon": 101.708
+  },
+  "halfSizeM": 5600,
+  "bbox": {
+   "south": 2.694694,
+   "west": 101.657637,
+   "north": 2.795306,
+   "east": 101.758363
+  },
+  "stations": [
+   "KE2",
+   "KE3"
+  ],
+  "lines": [
+   "erl"
+  ]
  }
 ]

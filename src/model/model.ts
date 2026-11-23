@@ -132,6 +132,7 @@ export class MapModel {
     ground: new THREE.MeshLambertMaterial(),
     road: new THREE.MeshBasicMaterial(), roadMajor: new THREE.MeshBasicMaterial(),
     water: new THREE.MeshBasicMaterial(), green: new THREE.MeshBasicMaterial(),
+    apron: new THREE.MeshBasicMaterial(), taxiway: new THREE.MeshBasicMaterial(), runway: new THREE.MeshBasicMaterial(), raceway: new THREE.MeshBasicMaterial(),
     build: new THREE.MeshLambertMaterial(), context: new THREE.MeshLambertMaterial(),
     fade: new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.35 }),
     xray: new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.16, depthWrite: false }),
@@ -210,7 +211,15 @@ export class MapModel {
     const H = this.area.meta.halfSizeM;
     const rules = this.area.rules.model ?? {};
     for (const z of this.area.zones) if (!this.mats.zone[z]) this.mats.zone[z] = new THREE.MeshLambertMaterial(); // zones beyond the default three
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.mats.ground);
+    // a study area wider than 2.4 km (KLIA, 8.5 km) is seen from far away, where the flat layers' few-cm lifts above the
+    // ground are below the depth buffer's resolution and flicker: there the ground covers the whole square and each flat
+    // layer gets its own polygon offset (green < aprons < taxiways < runways and race tracks < roads < major roads < water <
+    // park paths). The city spots are unchanged.
+    const wide = H > 1200;
+    if (wide) ([[this.mats.green, 1], [this.mats.apron, 2], [this.mats.taxiway, 3], [this.mats.runway, 4], [this.mats.raceway, 4], [this.mats.road, 5], [this.mats.roadMajor, 6], [this.mats.water, 7], [this.mats.parkPath, 8]] as const)
+      .forEach(([m, f]) => Object.assign(m, { polygonOffset: true, polygonOffsetFactor: -f, polygonOffsetUnits: -4 * f }));
+    const groundSize = wide ? Math.ceil(2.4 * H) : 6000;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), this.mats.ground);
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.group.add(ground);
 
     // study-area frame
@@ -218,6 +227,12 @@ export class MapModel {
     this.group.add(frame);
 
     this.group.add(new THREE.Mesh(merge(areas.green.map((a) => flatShape(a.ring, 0.04))), this.mats.green));
+    // airfield and race-track surfaces (areas with aeroways only), above the green and below the roads
+    const aero = lines.aeroways ?? [];
+    for (const [kind, y] of [['apron', 0.045], ['taxiway', 0.05], ['runway', 0.055], ['raceway', 0.055]] as const) {
+      const ws = aero.filter((a) => a.kind === kind); if (!ws.length) continue;
+      this.group.add(new THREE.Mesh(merge(ws.map((a) => (a.area ? flatShape(a.pts, y) : ribbon(a.pts.map(([x, n]) => v3(x, n, y)), a.width ?? 20)))), this.mats[kind]));
+    }
     const water = merge([
       ...areas.waterAreas.map((a) => flatShape(a.ring, 0.1)),
       ...lines.waterLines.map((w) => ribbon(w.pts.map(([x, n]) => v3(x, n, 0.09)), w.width ?? (w.kind === 'river' ? 20 : 4))),
@@ -520,6 +535,7 @@ export class MapModel {
     m.ground.color = col(p.ground);
     m.road.color = col(p.road); m.roadMajor.color = col(p.roadMajor);
     m.water.color = col(p.water); m.green.color = col(p.green);
+    const ae = p.aeroway; m.apron.color = col(ae?.apron ?? p.road); m.taxiway.color = col(ae?.taxiway ?? p.road); m.runway.color = col(ae?.runway ?? p.roadMajor); m.raceway.color = col(ae?.raceway ?? p.roadMajor);
     m.build.color = col(p.building); m.context.color = col(p.buildingContext);
     m.fade.color = col(p.buildingContext); m.xray.color = col(p.building);
     m.pier.color = col(p.buildingContext);

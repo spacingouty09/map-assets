@@ -1,0 +1,10 @@
+{
+  "fetched": "2026-11-23",
+  "notes": "Cited facts quoted in websites' text about this area (every number shown must come from data or a cited source). Values as published; fetched on the date above.",
+  "facts": {
+    "klia": { "opened": "1998-06-27", "architect": "Kisho Kurokawa", "runways": [{ "ref": "14L/32R", "lengthM": 4019 }, { "ref": "14R/32L", "lengthM": 4000 }, { "ref": "15/33", "lengthM": 3960 }], "runwaySurface": "asphalt", "passengers": 63121653, "passengersYear": 2025, "publisher": "Wikipedia – Kuala Lumpur International Airport", "url": "https://en.wikipedia.org/wiki/Kuala_Lumpur_International_Airport", "note": "Opened = officially inaugurated. Architect of the Terminal 1 building. The map draws the runways from OSM (aeroway=runway, pull of 2026-11-23): 4039 m, 4016 m and 3974 m centre lines, within 0.4 % of these lengths (OSM centre lines run past the thresholds)." },
+    "t1Station": { "codes": ["KE2", "KT5"], "opened": "2002", "publisher": "Wikipedia – KLIA T1 ERL station", "url": "https://en.wikipedia.org/wiki/KLIA_T1_ERL_station", "note": "The infobox gives the year only." },
+    "t2Station": { "codes": ["KE3", "KT6"], "opened": "2014-05-01", "publisher": "Wikipedia – KLIA T2 ERL station", "url": "https://en.wikipedia.org/wiki/KLIA_T2_ERL_station" },
+    "circuit": { "opened": "1999-03-07", "lengthKm": 5.543, "capacity": 130000, "publisher": "Wikipedia – Sepang International Circuit", "url": "https://en.wikipedia.org/wiki/Sepang_International_Circuit", "note": "Grand Prix circuit length. Capacity is the infobox 'Capacity' field (not labelled as grandstand seats). The map draws the track from OSM (highway=raceway, pull of 2026-11-23), including the pit lane and the handling circuit." }
+  }
+}
