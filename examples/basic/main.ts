@@ -37,6 +37,11 @@ addEventListener('resize', () => {
 });
 
 void loadArea(areaId).then((area) => {
+  // a study area wider than 2.4 km (Bukit Jalil, KLIA) needs the camera further back and a farther far plane, or the
+  // model is cut off when you zoom out; the city spots (≤ 1.2 km) keep the defaults
+  const k = area.meta.halfSizeM > 1200 ? area.meta.halfSizeM / 600 : 1;
+  camera.far = 9000 * k; camera.position.multiplyScalar(k); camera.updateProjectionMatrix();
+  controls.maxDistance = 3600 * k;
   const model = new MapModel(area, { palette: dark ? DARK_PALETTE : LIGHT_PALETTE });
   model.setMode({ rails: { lrt: 'highlight', ktm: 'highlight', erl: 'context' }, footways: 'faint', routeSet: 'walks' });
   scene.add(model.group);
