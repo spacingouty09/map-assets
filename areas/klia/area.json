@@ -1,0 +1,9 @@
+{
+  "id": "klia",
+  "name": "KLIA",
+  "kind": "signature",
+  "summary": "Kuala Lumpur International Airport in Sepang: Terminal 1 and its Satellite Building, klia2 and gateway@klia2, the control tower and runways, Mitsui Outlet Park KLIA Sepang and the Sepang International Circuit, around the KLIA and klia2 stations of the KLIA Ekspres and KLIA Transit.",
+  "center": { "lat": 2.754, "lon": 101.711 },
+  "halfSizeM": 3700,
+  "notes": "Study area: 7.4 km x 7.4 km chosen on 2026-11-23 to hold the places the person picked: klia2 and AirAsia RedQ in the west, the Sepang International Circuit in the east, Mitsui Outlet Park in the north and the MASkargo cargo area in the south, plus a margin. Centre and size are a first fit from approximate positions; refit to the OSM outlines once the pull is in."
+}
