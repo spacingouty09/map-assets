@@ -51,6 +51,8 @@ void loadArea(areaId).then((area) => {
     const dt = last ? (now - last) / 1000 : 0; last = now;
     model.update(now, dt, { reducedMotion: reducedMotion(), paused: document.hidden });
     controls.update();
+    // wide areas: the near plane follows the zoom so the flat layers keep depth precision (no flicker when zoomed out)
+    if (k > 1) { const near = Math.max(20, camera.position.distanceTo(controls.target) / 60); if (Math.abs(near - camera.near) > 0.5) { camera.near = near; camera.updateProjectionMatrix(); } }
     renderer.render(scene, camera);
   });
 });
