@@ -2,7 +2,7 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
-## Unreleased (v0.3.0)
+## v0.3.0 (2026-11-23)
 
 A new spot, KLIA, and airfield surfaces. Additive, but `Palette` and the `lines.json` shape gain a field, so this is a minor version (websites need not change code; a website with its own palette can add `aeroway` colours).
 
