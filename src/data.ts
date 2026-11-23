@@ -24,6 +24,9 @@ export interface Rail { id: number; line: RailLineId; route?: 1 | 2 | null; rout
 export type Shelter = 'indoor' | 'covered-tag' | 'in-building' | 'open';
 export interface Footway { id: number; kind: string; bridge: boolean; covered: boolean; indoor: boolean; layer: number; sheltered: boolean; shelter: Shelter; pts: XY[] }
 export interface WaterLine { id: number; kind: string; name: string | null; width: number | null; pts: XY[] }
+/** Airfield and race-track surfaces (OSM aeroway=runway|taxiway|apron, highway=raceway), only in areas that have them
+ *  (KLIA): a centre line `pts` drawn `width` m wide (OSM width, else 45 / 23 / 15 m), or an area ring (`area`, aprons). */
+export interface Aeroway { id: string; kind: 'runway' | 'taxiway' | 'apron' | 'raceway'; ref: string | null; name: string | null; width: number | null; area: boolean; pts: XY[] }
 /** A ground polygon: water, green space or a named landuse precinct. */
 export interface Polygon { id: string; name: string | null; ring: XY[]; landuse?: string }
 export interface Station { id: string; ref: string | null; name: string; osmName: string; operator: string | null; layer: number; c: XY }
@@ -104,7 +107,7 @@ export interface AreaInfo { id: string; name: string; kind: 'signature' | 'site'
 
 /** An area's files as loaded (generated loaders in areas.gen.ts). */
 export interface RawArea {
-  meta: Meta; buildings: Building[]; lines: { roads: Road[]; rails: Rail[]; footways: Footway[]; waterLines: WaterLine[] };
+  meta: Meta; buildings: Building[]; lines: { roads: Road[]; rails: Rail[]; footways: Footway[]; waterLines: WaterLine[]; aeroways?: Aeroway[] };
   areas: { waterAreas: Polygon[]; green: Polygon[]; precincts: Polygon[] }; stations: Station[];
   routes: { routes: Route[]; walks: Route[]; anchors: Record<string, { label: string; pt: XY }> };
   namedOutlines: NamedOutline[]; landmarks: Landmark[]; facilities: Facilities; rules: AreaRules;

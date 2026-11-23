@@ -23,6 +23,8 @@ export interface Palette {
   underground: string;
   /** facility markers: hotels, car parks, bus stops, station entrances */
   facility: { hotel: string; parking: string; bus: string; entrance: string };
+  /** airfield and race-track surfaces (areas with aeroways only); without it they take the road colours */
+  aeroway?: { runway: string; taxiway: string; apron: string; raceway: string };
 }
 
 const rail = { lrt: LINE_COLORS.lrt, ktm1: LINE_COLORS.ktm1, ktm2: LINE_COLORS.ktm2, kliaTransit: LINE_COLORS.kliaTransit, skypark: LINE_COLORS.skypark, py: LINE_COLORS.py, mr: LINE_COLORS.mr };
@@ -44,6 +46,7 @@ export const LIGHT_PALETTE: Palette = {
   light: { hemi: 2.4, hemiGround: '#bdbdb8', sun: 1.5 },
   underground: '#8a6f55',
   facility: { hotel: '#7a4fb0', parking: '#2f6fd0', bus: '#2e9e5b', entrance: '#161616' },
+  aeroway: { runway: '#b9b9b4', taxiway: '#cfcfca', apron: '#e0e0dc', raceway: '#b3aea8' },
 };
 
 /** The infographic's dark theme. */
@@ -63,4 +66,5 @@ export const DARK_PALETTE: Palette = {
   light: { hemi: 1.6, hemiGround: '#202020', sun: 1.1 },
   underground: '#6b5644',
   facility: { hotel: '#b28ae6', parking: '#6ea2f0', bus: '#5fd08e', entrance: '#ededea' },
+  aeroway: { runway: '#3d3d3a', taxiway: '#302f2e', apron: '#242423', raceway: '#423d38' },
 };

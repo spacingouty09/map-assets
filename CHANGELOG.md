@@ -2,6 +2,16 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## Unreleased (v0.3.0)
+
+A new spot, KLIA, and airfield surfaces. Additive, but `Palette` and the `lines.json` shape gain a field, so this is a minor version (websites need not change code; a website with its own palette can add `aeroway` colours).
+
+- **Spot (new):** `klia`, Kuala Lumpur International Airport: 11.2 km × 11.2 km around the whole aerodrome (all three runways), Mitsui Outlet Park KLIA Sepang and the Sepang International Circuit (Overpass, 2026-11-23).
+- **Data:** `lines.aeroways` (only in areas that have them): OSM `aeroway=runway|taxiway|apron` and `highway=raceway`, as centre lines with a width (OSM `width`, else 45 / 23 / 15 m) or as area rings (aprons). New type `Aeroway`.
+- **Palette:** optional `aeroway: { runway, taxiway, apron, raceway }`; without it they take the road colours. `LIGHT_PALETTE` and `DARK_PALETTE` include it.
+- **Model:** draws aprons, taxiways, runways and race tracks flat between the green and the roads. Study areas wider than 2.4 km get a polygon offset per flat layer and a larger ground plane (no flicker when zoomed out); the city spots are unchanged.
+- **Pipeline:** the Overpass query adds aeroways and raceways. Other spots were not re-pulled, so they have no `aeroways` and their data is unchanged.
+
 ## v0.2.4 (2026-11-23)
 
 Regions (Kuala Lumpur with every spot on its rail network), places of worship and attractions, and fresh OpenStreetMap data for three spots. Everything is added: no export, `SceneMode`, `Palette` or JSON shape changes, so websites need not adapt.
