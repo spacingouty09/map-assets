@@ -20,9 +20,11 @@
     { "id": "GARDENS", "label": "The Gardens Mall", "building": "The Gardens Mall" },
     { "id": "MEGAMALL", "label": "Mid Valley Megamall", "building": "Mid Valley Megamall" },
     { "id": "KB01", "label": "Mid Valley KTM (KB01)", "station": "KB01" },
-    { "id": "ECO", "labelTemplate": "KL Eco City ({name})", "closestOf": ["Mercu 2", "Mercu 3", "Mercu Aspire", "Strata Office"] }
+    { "id": "ECO", "labelTemplate": "KL Eco City ({name})", "closestOf": ["Mercu 2", "Mercu 3", "Mercu Aspire", "Strata Office"] },
+    { "id": "BANGSARSOUTH", "label": "Bangsar South", "point": { "lat": 3.1115177, "lon": 101.6653854 } },
+    { "id": "ANGKASAPURI", "label": "Angkasapuri (RTM)", "point": { "lat": 3.1139063, "lon": 101.6704141 } }
   ],
-  "anchorNotes": "ECO: the named KL Eco City tower whose footprint centre is closest to the pedestrian graph.",
+  "anchorNotes": "ECO: the named KL Eco City tower whose footprint centre is closest to the pedestrian graph. Outside the square, for the direction arrows at its edge (centres read off OSM, Overpass, 2026-10-29): BANGSARSOUTH = way/472563342 (landuse=commercial 'Bangsar South', with The Sphere and The Horizon), ANGKASAPURI = way/192251464 (Bangunan Utama Angkasapuri, RTM's broadcasting complex with the RTM Museum).",
   "routes": [["leg1", "KJ17", "GARDENS"], ["leg2", "GARDENS", "MEGAMALL"], ["leg3", "MEGAMALL", "KB01"]],
   "walks": [["w-kj17-megamall", "KJ17", "MEGAMALL"], ["w-kb01-gardens", "KB01", "GARDENS"], ["w-kj17-eco", "KJ17", "ECO"], ["w-megamall-gardens", "MEGAMALL", "GARDENS"]],
   "routeWithin": [

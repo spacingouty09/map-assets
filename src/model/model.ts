@@ -403,10 +403,12 @@ export class MapModel {
 
   // ---------- facilities ----------
   /** Markers at facility points: a tall pin for hotels (on top of the building they are in), car-park footprints and
-   *  entrances, bus-stop posts and station entrances. Built only for the types the area has; shown with mode.facilities. */
+   *  entrances, bus-stop posts and station entrances. Built only for the types the area has; shown with mode.facilities.
+   *  Places of worship and attractions get no marker, only a focus position (facilityAt) on the roof of their building. */
   private buildFacilities() {
     const f = this.area.facilities; if (!f) return;
-    const any = f.hotels.length + f.parking.length + f.parkingEntrances.length + f.busStops.length + f.stationEntrances.length;
+    const places = [...(f.worship ?? []), ...(f.attractions ?? [])];
+    const any = f.hotels.length + f.parking.length + f.parkingEntrances.length + f.busStops.length + f.stationEntrances.length + places.length;
     if (!any) return;
     const lam = () => new THREE.MeshLambertMaterial();
     const fm = this.facMats = { hotel: lam(), parking: lam(), parkingArea: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }), bus: lam(), entrance: lam(), focus: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9 }) };
@@ -429,6 +431,7 @@ export class MapModel {
     }
     if (f.busStops.length) { const g = new THREE.Group(); g.add(pins(f.busStops, new THREE.CylinderGeometry(1.6, 1.6, 1, 12), fm.bus, () => 0, () => 7)); this.facGroups.bus = g; }
     if (f.stationEntrances.length) { const g = new THREE.Group(); g.add(pins(f.stationEntrances, unitBox(3.2), fm.entrance, () => 0, () => 5)); this.facGroups.entrances = g; }
+    for (const p of places) this.facilityAt.set(p.id, v3(p.c[0], p.c[1], roofAt(p.c) + 4));
     for (const g of Object.values(this.facGroups)) { g.visible = false; this.group.add(g); }
     this.facFocus = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 12), fm.focus); this.facFocus.visible = false; this.facFocus.renderOrder = 13; this.group.add(this.facFocus);
   }

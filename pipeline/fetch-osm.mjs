@@ -37,31 +37,39 @@ const query = `[out:json][timeout:120];
   nwr["tourism"~"^(hotel|apartment|hostel|guest_house|motel)$"](${b});
   node["highway"="bus_stop"](${b});
   node["public_transport"="platform"]["bus"="yes"](${b});
+  nwr["amenity"="place_of_worship"](${b});
+  nwr["tourism"~"(^|;) *(attraction|museum|gallery|aquarium|zoo|theme_park) *(;|$)"]["name"](${b});
+  nwr["amenity"~"(^|;) *(theatre|cinema|arts_centre|exhibition_centre|conference_centre|library) *(;|$)"]["name"](${b});
+  nwr["shop"~"(^|;) *(mall|department_store) *(;|$)"]["name"](${b});
 );
 out body geom;`;
 
 mkdirSync(at(dir('raw')), { recursive: true });
 writeFileSync(at(dir('raw/overpass-query.overpassql')), query);
 const ENDPOINTS = [ENDPOINT, 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-let res;
+// a mirror that lags (its OSM base older than a week) is skipped like a failed one
+const MAX_LAG_DAYS = 7;
+let json = null;
 for (let attempt = 0; attempt < 6; attempt++) {
   const url = ENDPOINTS[attempt % ENDPOINTS.length];
   console.log(`[${id}] Querying ${url} bbox ${b} (attempt ${attempt + 1})`);
   try {
-    res = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'data=' + encodeURIComponent(query),
       signal: AbortSignal.timeout(180000),
     });
-    if (res.ok && (res.headers.get('content-type') || '').includes('json')) break;
-    console.warn('  HTTP', res.status, res.headers.get('content-type'));
-    res = null;
+    if (res.ok && (res.headers.get('content-type') || '').includes('json')) {
+      const body = await res.json(); const base = body.osm3s?.timestamp_osm_base;
+      const lagDays = base ? (Date.now() - Date.parse(base)) / 86400000 : 0;
+      if (lagDays <= MAX_LAG_DAYS) { json = body; console.log(`  OSM data as of ${base ?? '?'}`); break; }
+      console.warn(`  stale: OSM data as of ${base} (${Math.round(lagDays)} days old)`);
+    } else console.warn('  HTTP', res.status, res.headers.get('content-type'));
   } catch (err) { console.warn('  failed', err.message); }
   await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
 }
-if (!res || !res.ok) { console.error('Overpass failed after retries'); process.exit(1); }
-const json = await res.json();
+if (!json) { console.error('Overpass failed after retries'); process.exit(1); }
 json.fetched_at = new Date().toISOString();
 json.bbox = BBOX;
 writeFileSync(at(dir('raw/overpass.json')), JSON.stringify(json));

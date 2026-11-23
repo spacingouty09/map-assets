@@ -84,9 +84,28 @@
       "label": "Walkway to Bukit Bintang",
       "footway": "KLCC-Bukit Bintang Pedestrian Walkway",
       "end": "south"
+    },
+    {
+      "id": "PAVILION",
+      "label": "Pavilion Kuala Lumpur",
+      "point": { "lat": 3.1491165, "lon": 101.7135192 }
+    },
+    {
+      "id": "INTERMARK",
+      "label": "The Intermark",
+      "point": { "lat": 3.1617017, "lon": 101.7202037 }
+    },
+    {
+      "id": "SALOMA",
+      "label": "Saloma Link",
+      "point": { "lat": 3.1610114, "lon": 101.7082266 }
     }
   ],
-  "anchorNotes": "WALKWAY: the southern end of the KLCC–Bukit Bintang pedestrian walkway inside the study square, where it leaves towards Pavilion (a future spot).",
+  "anchorNotes": "WALKWAY: the southern end of the KLCC–Bukit Bintang pedestrian walkway inside the study square, where it leaves towards Pavilion (a future spot). Outside the square, for the direction arrows at its edge (centres read off OSM, Overpass, 2026-10-29): PAVILION = way/28271276 (Pavilion Kuala Lumpur, shop=mall, Bukit Bintang), INTERMARK = way/918679748 (The Intermark, just past the north-east corner), SALOMA = way/765200301 (Pintasan Saloma, the footbridge over the Klang River to Kampung Baru).",
+  "placeHosts": {
+    "node/1456303681": "Pusat Konvensyen Kuala Lumpur"
+  },
+  "placeHostNotes": "Aquaria KLCC (node/1456303681, level -1) lies beneath the Kuala Lumpur Convention Centre (aquariaklcc.com home page: 'beneath the Kuala Lumpur Convention Centre', fetched 2026-10-29); its OSM point lies in an unnamed outline nearer Menara Permata Sapura.",
   "routes": [
     [
       "leg1",

@@ -2,6 +2,22 @@
 
 Versions follow [CONTRIBUTING.md § 5](CONTRIBUTING.md#5-release-maintainers-after-merge): while 0.x, a minor bump means websites must adapt; a patch is data or content only.
 
+## v0.2.4 (2026-11-23)
+
+Regions (Kuala Lumpur with every spot on its rail network), places of worship and attractions, and fresh OpenStreetMap data for three spots. Everything is added: no export, `SceneMode`, `Palette` or JSON shape changes, so websites need not adapt.
+
+- **Regions (new):** `regions/<id>/` with `loadRegion(id)` and `RegionModel` (both exported from `@map-assets`; `@map-assets/region` holds the data loaders and journeys alone). `kuala-lumpur`: 10 rail lines (KTM 1 / 2, Ampang, Sri Petaling, Kelana Jaya, KLIA Ekspres / Transit, Monorail, Kajang, Putrajaya), 114 stations, 4 walking changes, motorways, rivers and the Federal Territory boundary, cut from one Overpass pull of the Klang Valley (kept in `regions/klang-valley/raw/` for a later Klang Valley region). Lines that share a track are drawn side by side; the spots are small tiles of their buildings at their real place.
+- **Journeys:** `findJourney(region, from, to)` (fewest stops, a change costs 4 stops plus 1 per 100 m walked) and `findJourneys(…)`, every sensible way best first (per set of up to 3 lines; same ride on two lines is one option; options far worse than the best are left out).
+- **Street map:** `loadRegionBasemap(id)` and `RegionModel.setBasemap()`: streets (residential and up), water and green areas and 281 place names (towns, suburbs, quarters, neighbourhoods, Chinese names where OSM has them), drawn flat under the network; thinner streets fade out as the view zooms out (`setScale`). While it is laid the spot tiles lose their plain plate, so the streets, river and green run on under their buildings.
+- **Pipeline:** `region:fetch` / `region:process`; the street-map pull comes in tiles across Overpass mirrors, resumes after a failure and gives up on a request only after 90 s without data. `data:check` covers the regions.
+
+- **Data:** `facilities.worship` (every OSM `amenity=place_of_worship`, with `religion`, `denomination` and `subtype`) and `facilities.attractions` (named OSM museums, galleries, aquariums, zoos, theme parks, attractions, theatres, cinemas, arts, exhibition and convention centres, libraries, malls and department stores, with a `kind`). Each place says where it is: `own` (a building of its own), `indoor` (an OSM point mapped indoors or on a level other than 0) and `host` (the smallest building outline it stands in, named by the smallest named one; for indoor points with no outline, the nearest named outline within 80 m), so a website can label the ones in the open and list the ones inside other buildings. New types `PlacePos`, `PlaceHost`, `AttractionKind`.
+- **Model:** `MapModel.facilityAt` also holds the places of worship and attractions (no markers), so a website can fly to them.
+- **Pipeline:** the Overpass query adds places of worship and attractions (`;`-separated tags such as `aquarium;attraction` count). `data:fetch` now skips a mirror whose OSM data is more than 7 days old (one mirror was serving July data) and logs the data's date. Optional rule `placeHosts` (with cited `placeHostNotes`) sets a place's host building when the outlines get it wrong.
+- **Re-pulled (2026-10-29):** KLCC, Mid Valley and KL Sentral. KLCC and KL Sentral keep the same buildings, routes and figures; Mid Valley's previous pull predated the facilities query, so it gains the facilities that pull lacked (4 more hotels, 16 car-park entrances, 10 bus stops, 4 station entrances) and four roads; three outlines move slightly, and buildings, routes and figures are unchanged. Bukit Jalil was not re-pulled, so it lists only the places mapped as buildings.
+- **Anchors (points outside the square, for direction labels):** KLCC: Pavilion KL, The Intermark, Saloma Link. Mid Valley: Bangsar South, Angkasapuri. KL Sentral: the Old KL Railway Station, the Royal Museum, KL Bird Park, the Royal Malaysia Police Museum and Sri Kandaswamy Kovil.
+- **Rules:** KLCC `placeHosts`: Aquaria KLCC is beneath the KL Convention Centre (aquariaklcc.com, fetched 2026-10-29).
+
 ## v0.2.3 (2026-10-29)
 
 A model option; the API is unchanged (one new optional rule) and every spot's data files are byte-for-byte the same as v0.2.2.

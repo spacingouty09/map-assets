@@ -379,6 +379,41 @@ function processArea(id) {
   }
   for (const se of facilities.stationEntrances) { const s = stations.slice().sort((a, b) => Math.hypot(a.c[0] - se.c[0], a.c[1] - se.c[1]) - Math.hypot(b.c[0] - se.c[0], b.c[1] - se.c[1]))[0]; se.station = s ? s.ref || s.name : null; }
 
+  // ---------- facilities: places of worship and attractions (museums, theatres, malls...) ----------
+  // own: the element is itself a building outline; otherwise host = the smallest building outline its point stands in, named
+  // after the smallest named outline holding the point. indoor: a point tagged indoor=yes or with a level other than 0 (a
+  // prayer room or attraction inside a building); when no outline holds it, its host is the nearest named outline within
+  // 80 m (OSM points of underground places often lie just outside the outline). A point and a way of the same name within
+  // 150 m: the way is kept.
+  const ATTRACTION = { tourism: ['museum', 'gallery', 'aquarium', 'zoo', 'theme_park', 'attraction'], amenity: ['theatre', 'cinema', 'arts_centre', 'exhibition_centre', 'conference_centre', 'library'], shop: ['mall', 'department_store'] };
+  // first match in key order, then value order; a tag may hold several values ("aquarium; attraction")
+  const attractionKind = (t) => Object.entries(ATTRACTION).map(([k, vs]) => { const have = (t[k] || '').split(';').map((v) => v.trim()); return vs.find((v) => have.includes(v)) ?? null; }).find(Boolean) ?? null;
+  const edgeDist = (p, ring) => Math.min(...ring.map((a, i) => { const b = ring[(i + 1) % ring.length]; const dx = b[0] - a[0], dy = b[1] - a[1]; const k = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(p[0] - a[0] - k * dx, p[1] - a[1] - k * dy); }));
+  // a block name of one or two letters ("D") says nothing to a reader: not used as a host name
+  const hostName = (o) => (o.tags.name && o.tags.name.length > 2 ? o.tags.name : null);
+  const hostOf = (c, selfId, indoor) => {
+    const holding = outlines.filter((o) => o.id !== selfId && inside(c, o.ring)).sort((a, b) => a.area - b.area);
+    const near = () => outlines.filter((o) => hostName(o) && o.id !== selfId).map((o) => ({ o, d: edgeDist(c, o.ring) })).filter((x) => x.d <= 80).sort((a, b) => a.d - b.d)[0]?.o ?? null;
+    if (holding.length) { const named = holding.find(hostName) ?? (indoor ? near() : null); return { id: holding[0].id, name: named ? hostName(named) : null }; }
+    const n = indoor ? near() : null;
+    return n ? { id: n.id, name: hostName(n) } : null;
+  };
+  // rules.placeHosts: OSM id -> the OSM name of the building a place is in, where the geometry says otherwise (see placeHostNotes)
+  const placeHost = (pid) => { const n = rules.placeHosts?.[pid]; if (!n) return undefined; const o = outlines.find((x) => x.tags.name === n); if (!o) console.warn(`[${id}] placeHosts: ${pid} -> ${n} not found`); return o ? { id: o.id, name: n } : undefined; };
+  const placeList = (pick, extra) => {
+    const out = [];
+    for (const e of els) {
+      const t = T(e); if (!pick(t)) continue;
+      const c = pointOf(e); if (!c || !inBox(c)) continue;
+      const pid = `${e.type}/${e.id}`; const own = e.type !== 'node' && !!t.building;
+      const indoor = e.type === 'node' && (t.indoor === 'yes' || (t.level != null && t.level !== '0'));
+      out.push({ id: pid, name: t.name || null, nameEn: t['name:en'] || null, c: [r1(c[0]), r1(c[1])], ...extra(t), own, indoor, host: own ? null : placeHost(pid) ?? hostOf(c, pid, indoor) });
+    }
+    return out.filter((p) => !(p.id.startsWith('node/') && p.name && out.some((q) => q !== p && !q.id.startsWith('node/') && q.name === p.name && Math.hypot(q.c[0] - p.c[0], q.c[1] - p.c[1]) < 150)));
+  };
+  facilities.worship = placeList((t) => t.amenity === 'place_of_worship', (t) => ({ religion: t.religion || null, denomination: t.denomination || null, subtype: t.place_of_worship || null }));
+  facilities.attractions = placeList((t) => !!t.name && !!attractionKind(t), (t) => ({ kind: attractionKind(t) }));
+
   // ---------- pedestrian routing on OSM topology ----------
   // Shared OSM nodes have identical coordinates, so coordinates act as node ids.
   const WALKABLE_ROADS = new Set(['primary', 'secondary', 'tertiary', 'primary_link', 'secondary_link', 'tertiary_link', 'residential', 'unclassified', 'service']);

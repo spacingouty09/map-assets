@@ -1,10 +1,11 @@
-[out:json][timeout:90];
+[out:json][timeout:120];
 (
   way["building"](3.113508,101.671302,3.122492,101.680298);
   relation["building"](3.113508,101.671302,3.122492,101.680298);
   way["building:part"](3.113508,101.671302,3.122492,101.680298);
   way["railway"~"^(light_rail|rail|subway|monorail|platform)$"](3.113508,101.671302,3.122492,101.680298);
-  node["railway"~"^(station|halt|stop)$"](3.113508,101.671302,3.122492,101.680298);
+  node["railway"~"^(station|halt|stop|subway_entrance|train_station_entrance)$"](3.113508,101.671302,3.122492,101.680298);
+  way["railway"="station"](3.113508,101.671302,3.122492,101.680298);
   node["public_transport"="station"](3.113508,101.671302,3.122492,101.680298);
   way["public_transport"="station"](3.113508,101.671302,3.122492,101.680298);
   way["waterway"~"^(river|canal|stream)$"](3.113508,101.671302,3.122492,101.680298);
@@ -18,5 +19,14 @@
   way["landuse"]["name"](3.113508,101.671302,3.122492,101.680298);
   relation["landuse"]["name"](3.113508,101.671302,3.122492,101.680298);
   way["amenity"="parking"]["building"!~"."](3.113508,101.671302,3.122492,101.680298);
+  nwr["amenity"="parking"](3.113508,101.671302,3.122492,101.680298);
+  node["amenity"="parking_entrance"](3.113508,101.671302,3.122492,101.680298);
+  nwr["tourism"~"^(hotel|apartment|hostel|guest_house|motel)$"](3.113508,101.671302,3.122492,101.680298);
+  node["highway"="bus_stop"](3.113508,101.671302,3.122492,101.680298);
+  node["public_transport"="platform"]["bus"="yes"](3.113508,101.671302,3.122492,101.680298);
+  nwr["amenity"="place_of_worship"](3.113508,101.671302,3.122492,101.680298);
+  nwr["tourism"~"(^|;) *(attraction|museum|gallery|aquarium|zoo|theme_park) *(;|$)"]["name"](3.113508,101.671302,3.122492,101.680298);
+  nwr["amenity"~"(^|;) *(theatre|cinema|arts_centre|exhibition_centre|conference_centre|library) *(;|$)"]["name"](3.113508,101.671302,3.122492,101.680298);
+  nwr["shop"~"(^|;) *(mall|department_store) *(;|$)"]["name"](3.113508,101.671302,3.122492,101.680298);
 );
 out body geom;
