@@ -6,7 +6,7 @@
     { "id": "klia2", "priority": 3, "names": ["KLIA Terminal 2", "KLIA Terminal 2 (Main Building)", "KLIA Terminal 2 (Satellite Building)", "Pier J (Domestic)", "Pier K,L (Domestic/International)", "Pier P (International)", "Pier Q (International)", "Skybridge"] },
     { "id": "gateway", "priority": 4, "names": ["Gateway@klia2", "KLIA Terminal 2 Transportation Hub", "Medan Kereta"] },
     { "id": "airasia", "priority": 5, "names": ["AirAsia RedQ", "Tune KLIA2"] },
-    { "id": "towers", "priority": 6, "names": ["KUL ATC Tower East", "KUL ATC Tower West", "KUL Apron Tower"] },
+    { "id": "atc", "priority": 6, "names": ["KUL ATC Tower East", "KUL ATC Tower West", "KUL Apron Tower"] },
     { "id": "samasama", "priority": 7, "names": ["Sama-Sama"] },
     { "id": "cargo", "priority": 8, "names": ["Cargo Terminal", "Komplex Kastam KLIA Cargo Village", "Alibaba CAI NIAO KLIA Cargo", "Malaysia Airports Centralised Automated Warehouse"] },
     { "id": "mitsui", "priority": 9, "names": ["Mitsui Outlet Park KLIA Sepang"] },
