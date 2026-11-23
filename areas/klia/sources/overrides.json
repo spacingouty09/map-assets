@@ -1,0 +1,8 @@
+{
+  "fetched": "2026-11-23",
+  "notes": "Cited corrections to OSM tags for this area (replaced before processing). Station codes: OSM leaves the code off the ERL station objects, and the pipeline finds a station by its exact ref. Each station also has a KLIA Transit code (KLIA T1: KT5, KLIA T2: KT6, see facts.json); the KLIA Ekspres code is used as the ref.",
+  "overrides": {
+    "node/6763983630": { "tags": { "ref": "KE2" }, "reason": "OSM has no ref on the KLIA T1 ERL station; the Wikipedia infobox gives KE2 and KT5.", "publisher": "Wikipedia – KLIA T1 ERL station", "url": "https://en.wikipedia.org/wiki/KLIA_T1_ERL_station" },
+    "way/1033454811": { "tags": { "ref": "KE3" }, "reason": "OSM has no ref on the KLIA T2 ERL station; the Wikipedia infobox gives KE3 and KT6.", "publisher": "Wikipedia – KLIA T2 ERL station", "url": "https://en.wikipedia.org/wiki/KLIA_T2_ERL_station" }
+  }
+}
