@@ -24,5 +24,9 @@
   nwr["tourism"~"^(hotel|apartment|hostel|guest_house|motel)$"](3.15091,101.709602,3.16169,101.720398);
   node["highway"="bus_stop"](3.15091,101.709602,3.16169,101.720398);
   node["public_transport"="platform"]["bus"="yes"](3.15091,101.709602,3.16169,101.720398);
+  nwr["amenity"="place_of_worship"](3.15091,101.709602,3.16169,101.720398);
+  nwr["tourism"~"(^|;) *(attraction|museum|gallery|aquarium|zoo|theme_park) *(;|$)"]["name"](3.15091,101.709602,3.16169,101.720398);
+  nwr["amenity"~"(^|;) *(theatre|cinema|arts_centre|exhibition_centre|conference_centre|library) *(;|$)"]["name"](3.15091,101.709602,3.16169,101.720398);
+  nwr["shop"~"(^|;) *(mall|department_store) *(;|$)"]["name"](3.15091,101.709602,3.16169,101.720398);
 );
 out body geom;

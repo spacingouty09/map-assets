@@ -1,0 +1,7 @@
+{
+  "id": "klang-valley",
+  "name": "Klang Valley",
+  "summary": "The Klang Valley rail network (KTM Komuter, LRT, MRT, KL Monorail and the ERL) between Batu Caves, Port Klang, Putrajaya and Kajang, with the signature spots on it.",
+  "bbox": { "south": 2.88, "west": 101.38, "north": 3.33, "east": 101.82 },
+  "notes": "Box from Batu Caves / Rawang in the north to Putrajaya in the south and Port Klang in the west to Kajang in the east, so that every urban line end except the airport and the far KTM ends sits inside. Lines beyond the box are cut at its edge."
+}

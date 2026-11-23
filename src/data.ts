@@ -57,7 +57,19 @@ export interface Facilities {
   parkingEntrances: (FacilityBase & { parking: string | null })[];
   busStops: (FacilityBase & { ref: string | null; routes: string[]; shelter: boolean | null; network: string | null })[];
   stationEntrances: (FacilityBase & { ref: string | null; level: string | null; station: string | null })[];
+  /** amenity=place_of_worship (named or not; religion may hold several values, ';'-separated; subtype: the OSM
+   *  place_of_worship value, e.g. musalla). own: the element is itself a building outline; indoor: a point tagged indoor=yes
+   *  or with a level other than 0; host: the building outline its point stands in (name: the smallest named outline
+   *  holding it), for an indoor point outside every outline the nearest named one within 80 m, or null.
+   *  Optional: data before v0.2.4 has none. */
+  worship?: (FacilityBase & { religion: string | null; denomination: string | null; subtype: string | null } & PlacePos)[];
+  /** named museums, galleries, aquariums, attractions, theatres, cinemas, arts / exhibition / conference centres, libraries,
+   *  malls and department stores (kind: the OSM tourism / amenity / shop value), with own / indoor / host as for worship */
+  attractions?: (FacilityBase & { kind: AttractionKind } & PlacePos)[];
 }
+export interface PlacePos { own: boolean; indoor: boolean; host: PlaceHost | null }
+export interface PlaceHost { id: string; name: string | null }
+export type AttractionKind = 'museum' | 'gallery' | 'aquarium' | 'zoo' | 'theme_park' | 'attraction' | 'theatre' | 'cinema' | 'arts_centre' | 'exhibition_centre' | 'conference_centre' | 'library' | 'mall' | 'department_store';
 export interface ZoneStat { blocks: number; footprintM2: number; namedBuildings: string[]; tallest: { name: string | null; height: number; heightSource: HeightSource } | null; centroid: XY }
 export interface Meta {
   zones: Record<Zone, ZoneStat>;

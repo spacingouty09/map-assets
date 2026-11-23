@@ -1,0 +1,8 @@
+{
+  "id": "kuala-lumpur",
+  "name": "Kuala Lumpur",
+  "summary": "The rail lines of Kuala Lumpur (KTM Komuter, LRT, MRT, KL Monorail, ERL) inside the Federal Territory, with the signature spots on them.",
+  "raw": "klang-valley",
+  "bbox": { "south": 3.03, "west": 101.605, "north": 3.25, "east": 101.77 },
+  "notes": "The box around the Federal Territory of Kuala Lumpur (OSM boundary relation 2939672: 3.0334–3.2446 N, 101.6151–101.7585 E) plus a small margin. It is cut out of the Klang Valley fetch (regions/klang-valley/raw/), so a wider region needs no new download. Lines are cut where they leave the box for good."
+}

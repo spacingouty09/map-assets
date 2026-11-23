@@ -9,3 +9,5 @@ export * from './model/palette';
 export * from './model/model';
 export * from './model/trains';
 export * from './model/shade';
+export * from './region';
+export * from './model/region';

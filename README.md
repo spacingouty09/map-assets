@@ -9,7 +9,7 @@ The shared 3D map of **signature spots in Kuala Lumpur and the Klang Valley**, b
 
 For every spot it holds:
 
-- **Data:** building blocks with heights, roads, rail, footways and footbridges, walking routes, stations, landmarks and facilities (hotels, car parks, bus stops, station entrances), plus climate normals shared by all spots.
+- **Data:** building blocks with heights, roads, rail, footways and footbridges, walking routes, stations, landmarks and facilities (hotels, car parks, bus stops, station entrances, places of worship, attractions such as museums, galleries, malls and cinemas), plus climate normals shared by all spots.
 - **The pipeline** that builds the data from OpenStreetMap, driven by each spot's `rules.json`.
 - **The cited sources** for every number that doesn't come from OSM.
 - **A Three.js model** of it, ready to drop into any website, with an underground view for tunnels.
@@ -34,9 +34,13 @@ areas/
     raw/              the OpenStreetMap pull (Overpass)
     data/             generated JSON: buildings, lines, areas, stations, routes, landmarks, named outlines,
                       facilities, meta. Never edit by hand.
+regions/<id>/          a city or region with every spot on its rail network: region.json (box), rules.json (lines,
+                      walking changes), raw/ (Overpass pulls; basemap.json.gz is the street map), data/ (generated:
+                      region.json = lines, stations, light base map; basemap.json = streets, water, green, place names)
 sources/climate.json  cited climate normals for Kuala Lumpur, shared by every spot
 pipeline/             config.mjs (areas), fetch-osm.mjs (raw/), process-osm.mjs (raw/ + sources/ + rules → data/),
-                      check-data.mjs
+                      fetch-region.mjs / process-region.mjs (regions; `npm run region:fetch -- <id> [basemap]`,
+                      `npm run region:process -- <id>`), check-data.mjs
 src/
   index.ts            public API (everything below)
   areas.ts            listAreas(), loadArea(id)
@@ -44,7 +48,9 @@ src/
   areas.gen.ts, areas/<id>.gen.ts   generated loaders, one lazily loaded chunk per spot
   transit.ts          official line colours, line numbers, public stop numbers
   sun.ts              sun position (NOAA formulas), Malaysia time helpers
-  model/              MapModel (the Three.js model), trains, shade sampling, geometry helpers, palettes
+  region.ts           loadRegion(id), loadRegionBasemap(id), findJourney / findJourneys (routes on the rail network)
+  model/              MapModel (the Three.js model), RegionModel (a region), trains, shade sampling, geometry helpers,
+                      palettes
 examples/basic/       the smallest website using the model (?area=<id>)
 ```
 
@@ -187,6 +193,9 @@ The whole thing is in [examples/basic/main.ts](examples/basic/main.ts). Need onl
 | `SceneMode`, `ModePatch`, `DEFAULT_MODE` | what the model shows (rails, footways, routes, building colouring, sun, x-ray, `underground`, `facilities`…) |
 | `Palette`, `LIGHT_PALETTE`, `DARK_PALETTE` | colours and light levels; pass your own to match your site |
 | `groundSamples(area)`, `routeSampleSets(area)` | sample points for sidewalk-shade analysis |
+| `loadRegion(id)`, `loadRegionBasemap(id)` | a region (now `kuala-lumpur`): rail lines, stations, walking changes, a light base map; and its flat street map (streets, water and green areas, place names), loaded on demand |
+| `findJourney(region, from, to)`, `findJourneys(region, from, to, opts?)` | the best way between two stations (fewest stops, a change costs 4), or every sensible way, best first |
+| `RegionModel(region, { palette, areas })` | the region in 3D: lines side by side on shared track, stations, the spots as small tiles of their buildings; `setBasemap()`, `setJourney()`, `setScale()`, `pickTile()` |
 
 **Updating** to a newer release later: see [CONTRIBUTING.md § 6](CONTRIBUTING.md#6-update-a-website).
 
@@ -197,6 +206,7 @@ The whole thing is in [examples/basic/main.ts](examples/basic/main.ts). Need onl
 - **Facts** quoted in text (opening dates, park area…): `areas/<id>/sources/facts.json`, each with publisher and URL.
 - **Rail:** line colours and station codes from Wikipedia (see `src/transit.ts`). Mid Valley: the Skypark route comes from OSM relations 9985660 / 8391024, and which KTM line uses each track from OSM route relations (`raw/ktm-routes.json`).
 - **Underground depths** are schematic: 4.5 m per OSM `layer` step (OSM gives the order of levels, not depths).
+- **Regions:** Kuala Lumpur (`regions/kuala-lumpur/`): the rail network is cut from one Overpass pull of the Klang Valley (`regions/klang-valley/raw/`, 2026-11-20); the street map, water and green areas and place names from a second pull of the KL box (2026-11-20). © OpenStreetMap contributors.
 - **Climate:** cited WMO 1991–2020 normals in `sources/climate.json`. Sun position uses the NOAA formulas.
 
 ## Known open items
