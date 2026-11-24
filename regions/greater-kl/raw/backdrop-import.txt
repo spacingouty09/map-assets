@@ -1,0 +1,5 @@
+Imported with pipeline/import-pbf-backdrop.mjs from malaysia-singapore-brunei-latest.osm.pbf (https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf), OSM data as of 2026-11-23T21:21:17Z.
+Box: the region box widened by 150 km: 1.3025,100.0106 – 4.8075,103.2094
+osmium extract -b 100.0106,1.3025,103.2094,4.8075 --strategy smart
+osmium tags-filter w/natural=coastline w/highway=motorway,trunk wr/natural=water,wood,wetland wr/landuse=forest,reservoir,residential,commercial,industrial,retail wr/leisure=nature_reserve
+Preselection: areas under 0.1 km² left out, lines simplified to 20 m, coordinates rounded to 5 decimals.

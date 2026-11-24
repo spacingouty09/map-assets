@@ -15,7 +15,7 @@ const id = process.argv[2] || 'klang-valley';
 const kind = process.argv[3] === 'basemap' ? 'basemap' : 'rail';
 const cfg = JSON.parse(readFileSync(at(`regions/${id}/region.json`), 'utf8'));
 const B = cfg.bbox; const b = `${B.south},${B.west},${B.north},${B.east}`;
-const AREA = (k, v) => `way["${k}"~"^(${v})$"](${b});relation["${k}"~"^(${v})$"](${b});`;
+const AREA = (k, v, box = b) => `way["${k}"~"^(${v})$"](${box});relation["${k}"~"^(${v})$"](${box});`;
 const ROADS = (v, box) => `[out:json][timeout:300];
 way["highway"~"^(${v})$"](${box});
 out geom qt;`;
@@ -27,17 +27,20 @@ const tiles = (nx, ny) => Array.from({ length: nx * ny }, (_, i) => {
   const w = f(B.west + ((B.east - B.west) * x) / nx), e = f(B.west + ((B.east - B.west) * (x + 1)) / nx);
   return { label: `${y * nx + x + 1}/${nx * ny}`, box: `${s},${w},${n},${e}` };
 });
-const parts = kind === 'basemap' ? [
-  ...tiles(2, 2).map((t) => ({ name: `main roads ${t.label}`, q: ROADS('motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link', t.box) })),
-  ...tiles(3, 3).map((t) => ({ name: `streets ${t.label}`, q: ROADS('residential|unclassified|living_street', t.box) })),
-  { name: 'water and green areas', q: `[out:json][timeout:300];
+// a wide region sets its own tile grid in region.json ("tiles": { "main": [nx, ny], "streets": [nx, ny], "areas": [nx, ny] })
+const T = { main: [2, 2], streets: [3, 3], areas: [1, 1], ...(cfg.tiles || {}) };
+const AREAS = (box) => `[out:json][timeout:300];
 (
-  ${AREA('natural', 'water|wetland|wood|scrub|grassland')}
-  ${AREA('landuse', 'reservoir|basin|forest|grass|meadow|recreation_ground|cemetery|village_green')}
-  ${AREA('waterway', 'riverbank')}
-  ${AREA('leisure', 'park|garden|golf_course|nature_reserve|recreation_ground')}
+  ${AREA('natural', 'water|wetland|wood|scrub|grassland', box)}
+  ${AREA('landuse', 'reservoir|basin|forest|grass|meadow|recreation_ground|cemetery|village_green', box)}
+  ${AREA('waterway', 'riverbank', box)}
+  ${AREA('leisure', 'park|garden|golf_course|nature_reserve|recreation_ground', box)}
 );
-out geom qt;` },
+out geom qt;`;
+const parts = kind === 'basemap' ? [
+  ...tiles(...T.main).map((t) => ({ name: `main roads ${t.label}`, q: ROADS('motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link', t.box) })),
+  ...tiles(...T.streets).map((t) => ({ name: `streets ${t.label}`, q: ROADS('residential|unclassified|living_street', t.box) })),
+  ...(T.areas[0] * T.areas[1] === 1 ? [{ name: 'water and green areas', q: AREAS(b) }] : tiles(...T.areas).map((t) => ({ name: `water and green areas ${t.label}`, q: AREAS(t.box) }))),
   { name: 'place names', q: `[out:json][timeout:120];
 node["place"~"^(town|suburb|quarter|neighbourhood)$"](${b});
 out qt;` },

@@ -1,0 +1,291 @@
+{
+  "lines": [
+    {
+      "id": "ktm1",
+      "relation": 9985624,
+      "number": 1,
+      "code": "KA KB KC",
+      "kind": "ktm",
+      "name": "KTM Komuter Batu Caves–Pulau Sebang"
+    },
+    {
+      "id": "ktm2",
+      "relation": 9984969,
+      "number": 2,
+      "code": "KA KD",
+      "kind": "ktm",
+      "name": "KTM Komuter Tanjung Malim–Port Klang"
+    },
+    {
+      "id": "ag",
+      "relation": 4466552,
+      "number": 3,
+      "code": "AG",
+      "kind": "lrt",
+      "name": "LRT Ampang Line"
+    },
+    {
+      "id": "sp",
+      "relation": 3374384,
+      "number": 4,
+      "code": "SP",
+      "kind": "lrt",
+      "name": "LRT Sri Petaling Line"
+    },
+    {
+      "id": "kj",
+      "relation": 1895592,
+      "number": 5,
+      "code": "KJ",
+      "kind": "lrt",
+      "name": "LRT Kelana Jaya Line"
+    },
+    {
+      "id": "ke",
+      "relation": 8119878,
+      "number": 6,
+      "code": "KE",
+      "kind": "erl",
+      "name": "KLIA Ekspres"
+    },
+    {
+      "id": "kt",
+      "relation": 8119876,
+      "number": 7,
+      "code": "KT",
+      "kind": "erl",
+      "name": "KLIA Transit"
+    },
+    {
+      "id": "mr",
+      "relation": 2546881,
+      "number": 8,
+      "code": "MR",
+      "kind": "monorail",
+      "name": "KL Monorail Line"
+    },
+    {
+      "id": "kg",
+      "relation": 5690837,
+      "number": 9,
+      "code": "KG",
+      "kind": "mrt",
+      "name": "MRT Kajang Line"
+    },
+    {
+      "id": "py",
+      "relation": 11313578,
+      "number": 12,
+      "code": "PY",
+      "kind": "mrt",
+      "name": "MRT Putrajaya Line"
+    },
+    {
+      "id": "sa",
+      "relation": 8394085,
+      "number": 11,
+      "code": "SA",
+      "kind": "lrt",
+      "name": "LRT Shah Alam Line"
+    }
+  ],
+  "lineNotes": "As kuala-lumpur (same OSM route relations, one direction each, public line numbers from the Rapid KL / KTM / ERL network map), plus the Shah Alam Line (11, OSM relation 8394085, Johan Setia → Bandar Utama), which runs inside this wider box. The Skypark Link (10) is left out: the service is suspended. The ETS intercity trains and the KLIA Aerotrain are not part of the Klang Valley network map and are left out.",
+  "mergeM": 400,
+  "mergeNotes": "Stops of different lines whose names agree once the bracketed line hints are dropped (\"KL Sentral (KJ)\", \"KL Sentral (KTM)\") and that lie within mergeM metres are one interchange station.",
+  "transfers": [
+    {
+      "a": "KG15",
+      "b": "KJ15",
+      "note": "Muzium Negara MRT – KL Sentral, linked by a covered walkway (paid-to-paid link not assumed)"
+    },
+    {
+      "a": "KJ12",
+      "b": "MR8",
+      "note": "Dang Wangi LRT – Bukit Nanas Monorail, linked by a pedestrian walkway"
+    },
+    {
+      "a": "AG8",
+      "b": "KG17",
+      "note": "Plaza Rakyat LRT – Merdeka MRT, linked by a pedestrian walkway"
+    },
+    {
+      "a": "KB01",
+      "b": "KJ17",
+      "note": "Mid Valley KTM – Abdullah Hukum LRT, the walk through KL Eco City (map-assets klec-midvalley route)"
+    }
+  ],
+  "transferNotes": "Walking changes between stations with different names. The walking distance is the straight line between the stations, so it is a lower bound.",
+  "basemap": {
+    "inner": {
+      "south": 2.98,
+      "west": 101.53,
+      "north": 3.28,
+      "east": 101.8
+    },
+    "outer": {
+      "tolScale": 3,
+      "drop": [],
+      "minRunM": {
+        "minor": 150
+      }
+    }
+  },
+  "basemapNotes": "The map comes in two files so the city shows first. data/basemap.json is box B of the owner's region preview (2026-11-24: Petaling Jaya, Subang, Shah Alam's east edge, Cheras, Ampang, Gombak; 2.98–3.28 N, 101.53–101.80 E) at full detail. data/basemap-outer.json is the rest of the box out to Klang, Rawang, Genting and KLIA, thinned since it is seen from far away: roads simplified 3 times wider and residential runs under 150 m left out. Only rendering detail is dropped; no value is estimated.",
+  "backdrop": {
+    "marginKm": 150,
+    "minAreaKm2": {
+      "green": 2,
+      "urban": 0.5,
+      "water": 0.5
+    },
+    "tolM": {
+      "coast": 150,
+      "green": 250,
+      "urban": 150,
+      "water": 120,
+      "road": 80,
+      "rail": 30,
+      "exitPath": 200
+    },
+    "roads": [
+      "motorway",
+      "trunk"
+    ],
+    "rail": [
+      {
+        "line": "ktm1",
+        "relation": 9985624
+      },
+      {
+        "line": "ktm2",
+        "relation": 9984969
+      },
+      {
+        "line": "ets",
+        "relation": 14979747,
+        "name": "KTM ETS (Gemas – Padang Besar)",
+        "colour": null
+      }
+    ],
+    "exits": [
+      {
+        "id": "north",
+        "line": "ets",
+        "relation": 14979747,
+        "toward": "end",
+        "terminus": "Padang Besar",
+        "country": "TH",
+        "services": "KTM ETS (KL Sentral / JB Sentral – Padang Besar); at Padang Besar, SRT trains to Hat Yai and Bangkok",
+        "beyond": [
+          {
+            "name": "Padang Besar (Thai)",
+            "country": "TH",
+            "note": "SRT; immigration for both countries is at Padang Besar"
+          },
+          {
+            "name": "Hat Yai Junction",
+            "country": "TH",
+            "note": "SRT Ordinary Express 948 / 950"
+          },
+          {
+            "name": "Krung Thep Aphiwat (Bangkok)",
+            "country": "TH",
+            "note": "SRT Special Express 46, daily, overnight"
+          }
+        ],
+        "beyondNote": "No train crosses the border from Malaysia: change at Padang Besar. Thai stops between Padang Besar and Bangkok are left out (main stops only).",
+        "sources": [
+          {
+            "publisher": "OpenStreetMap, route relation 14979747 (ETS Gold Gemas – Padang Besar)",
+            "url": "https://www.openstreetmap.org/relation/14979747"
+          },
+          {
+            "publisher": "Wikipedia, Padang Besar railway station (SRT timetable table, as of 24 February 2026)",
+            "url": "https://en.wikipedia.org/wiki/Padang_Besar_railway_station",
+            "fetched": "2026-11-24"
+          }
+        ],
+        "from": "KL Sentral"
+      },
+      {
+        "id": "south",
+        "line": "ets",
+        "relation": 14979747,
+        "toward": "start",
+        "terminus": "Woodlands Train Checkpoint",
+        "country": "SG",
+        "trackBox": {
+          "south": 1.4,
+          "west": 102.2,
+          "north": 2.75,
+          "east": 103.95
+        },
+        "trackTo": "Woodlands Train Checkpoint",
+        "trackStopsVia": "JB Sentral",
+        "services": "KTM ETS to JB Sentral (since 12 Dec 2025); KTM Shuttle Tebrau JB Sentral – Woodlands Train Checkpoint",
+        "beyondNote": "South of Gemas the list is every station and halt OSM maps on the main line; ETS trains stop at some of them only (KTMB timetable). The Shuttle Tebrau runs until the Johor Bahru – Singapore RTS Link opens (2027).",
+        "sources": [
+          {
+            "publisher": "OpenStreetMap, route relation 14979747 and the main-line track and stations south of Gemas",
+            "url": "https://www.openstreetmap.org/relation/14979747"
+          },
+          {
+            "publisher": "paultan.org: KTM ETS train to JB Sentral starts on Dec 12 (2025)",
+            "url": "https://paultan.org/2025/12/09/ktm-ets-train-to-jb-sentral-starts-on-dec-12-tickets-open-for-sale-today-from-rm82-30-off-till-jan-11/",
+            "fetched": "2026-11-24"
+          },
+          {
+            "publisher": "Wikipedia, KTM Intercity (Shuttle Tebrau: JB Sentral – Woodlands Train Checkpoint, to be replaced by the RTS Link in 2027)",
+            "url": "https://en.wikipedia.org/wiki/KTM_Intercity",
+            "fetched": "2026-11-24"
+          },
+          {
+            "publisher": "sgtrains.com: RTS Link Woodlands North station completed, opening in 2027 (Sep 2026)",
+            "url": "https://blog.sgtrains.com/2026/09/johor-bahru-singapore-rts-link-woodlands-north-station-is-now-completed-slated-for-opening-in-2027/",
+            "fetched": "2026-11-24"
+          }
+        ],
+        "skipStations": [
+          "Mengkibol"
+        ],
+        "skipNote": "Mengkibol is left out: freight only (Wikipedia, Padang Besar railway station, line list).",
+        "from": "KL Sentral"
+      },
+      {
+        "id": "ktm1",
+        "line": "ktm1",
+        "relation": 9985624,
+        "toward": "end",
+        "terminus": "Pulau Sebang/Tampin",
+        "country": "MY",
+        "services": "KTM Komuter Line 1 (Batu Caves – Pulau Sebang/Tampin)",
+        "sources": [
+          {
+            "publisher": "OpenStreetMap, route relation 9985624",
+            "url": "https://www.openstreetmap.org/relation/9985624"
+          }
+        ],
+        "from": "KL Sentral"
+      },
+      {
+        "id": "ktm2",
+        "line": "ktm2",
+        "relation": 9984969,
+        "toward": "start",
+        "terminus": "Tanjung Malim",
+        "country": "MY",
+        "services": "KTM Komuter Line 2 (Tanjung Malim – Pelabuhan Klang)",
+        "sources": [
+          {
+            "publisher": "OpenStreetMap, route relation 9984969",
+            "url": "https://www.openstreetmap.org/relation/9984969"
+          }
+        ],
+        "from": "KL Sentral"
+      }
+    ]
+  },
+  "backdropNotes": "A coarse, low-detail map around box D out to the horizon (pipeline/import-pbf-backdrop.mjs, then region:process): land from the OSM coastline, big forest and green areas, built-up areas (landuse residential, commercial, industrial, retail), large lakes and reservoirs, and motorways and trunk roads. Areas smaller than minAreaKm2 are left out and lines simplified by tolM; inside box D only the land is kept (D's own map is drawn there). The extract (Malaysia, Singapore, Brunei) has no Indonesian data, so Sumatra's coast across the Strait of Malacca is drawn as sea.",
+  "backdropRailNotes": "Rail in the backdrop: the parts of these routes outside box D, cut at D's edge exactly where D's own lines end (the same route relation, chained the same way, from raw/overpass.json), so they join with no gap or overlap. ktm1 and ktm2 take their colour from the region's lines; ETS (KTM's intercity electric trains, relation 14979747 covers the whole Gemas – Padang Besar route) has no official line colour and is drawn thin and neutral, under the Komuter lines where they share the track. Left out: KTM Komuter Butterworth–Ipoh (only a few km near Ipoh at the far north edge, on the ETS track), the KLIA Aerotrain (inside the airport, in D), Skypark Link (suspended), and the East Coast Rail Link (under construction, no passenger service).",
+  "backdropExitNotes": "backdrop.exits: lines that run on far past the map. Each gets a path from `from` (a stop on the route) to the terminus, for the website's direction labels at the screen edge, and the ordered stations past the edge of box D (OSM stop order; south of Gemas, OSM stations on the main line). `beyond` lists the stops past the end of OSM coverage (Thailand) with a cited source."
+}

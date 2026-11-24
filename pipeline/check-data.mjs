@@ -10,7 +10,7 @@ import { regionIds } from './process-region.mjs';
 const files = () => [
   ...areaIds().flatMap((id) => (existsSync(at(`areas/${id}/data`)) ? readdirSync(at(`areas/${id}/data`)).filter((f) => f.endsWith('.json')).map((f) => `areas/${id}/data/${f}`) : [])),
   'areas/index.json', 'src/areas.gen.ts',
-  ...regionIds().flatMap((id) => [`regions/${id}/data/region.json`, `regions/${id}/data/basemap.json`]),
+  ...regionIds().flatMap((id) => [`regions/${id}/data/region.json`, `regions/${id}/data/basemap.json`, `regions/${id}/data/basemap-outer.json`, `regions/${id}/data/basemap-backdrop.json`]),
   ...(existsSync(at('src/areas')) ? readdirSync(at('src/areas')).filter((f) => f.endsWith('.gen.ts')).map((f) => `src/areas/${f}`) : []),
 ];
 const snapshot = () => Object.fromEntries(files().map((f) => [f, existsSync(at(f)) ? readFileSync(at(f), 'utf8') : null]));
