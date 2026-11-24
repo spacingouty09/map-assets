@@ -53,12 +53,16 @@ export interface RegionBase {
 }
 export interface RegionMeta {
   id: string; name: string; summary: string;
-  /** origin of the local frame (the middle of bbox) */
+  /** origin of the local frame (the middle of bbox, or of the frame region's box) */
   center: { lat: number; lon: number };
   bbox: { south: number; west: number; north: number; east: number };
-  /** half width / half height of the box (m) */
+  /** half width / half height of the box (m); in another region's frame, the reach from its middle to the farthest edge */
   halfSizeM: [number, number];
   source: string; attribution: string; fetchedAt: string | null;
+  /** drawn in another region's frame (its id), so the two line up with no offset (greater-kl: kuala-lumpur) */
+  frame?: string;
+  /** with a frame: the box in that frame (m): x0, y0 (west, south), x1, y1 (east, north) */
+  box?: [number, number, number, number];
 }
 export interface RawRegion { meta: RegionMeta; lines: RegionLine[]; stations: RegionStation[]; transfers: RegionTransfer[]; base: RegionBase }
 
@@ -280,27 +284,77 @@ export interface RegionPlace {
 /** A region's flat street map (regions/<id>/data/basemap.json), in the region's frame, cut to its box. Loaded on its own
  *  (loadRegionBasemap), after the rail network, since it is far bigger. */
 export interface RegionBasemap {
-  meta: { id: string; bbox: RegionMeta['bbox']; center: RegionMeta['center']; fetchedAt: string | null; source: string; attribution: string };
+  meta: {
+    id: string; bbox: RegionMeta['bbox']; center: RegionMeta['center']; fetchedAt: string | null; source: string; attribution: string;
+    /** drawn in another region's frame (its id): the coordinates line up with that region's data with no offset */
+    frame?: string;
+    /** a split map (rules.json "basemap"): this file is the inner box (full detail) or the outer ring (thinned) */
+    part?: BasemapPart;
+    /** the box this file covers, in its frame (m): x0, y0 (west, south), x1, y1 (east, north) */
+    box?: [number, number, number, number];
+    /** the outer ring or the backdrop: what was thinned */
+    thinned?: string;
+  };
   /** per road class, polylines as flat lists x0, y0, x1, y1, … (m, whole metres) */
   roads: Record<BasemapRoadClass, number[][]>;
   /** areas: each polygon is its outer ring then its holes, each ring a flat list x0, y0, x1, y1, … (m) */
   water: number[][][]; green: number[][][];
   /** named places, the bigger kinds first (town, suburb, quarter, neighbourhood) */
   places: RegionPlace[];
+  /** the backdrop only: land (from the coastline; the rest of its box is sea) and built-up areas, polygons as above */
+  land?: number[][][]; urban?: number[][][];
+  /** the backdrop only: rail outside the region's box, each run a flat list x0, y0, … (m) that starts or ends exactly
+   *  where the region's own line of the same id stops at the box edge. `ofRegion`: continues one of the region's lines
+   *  (drawn in its colour); otherwise a line of its own (`colour` null: no official colour, drawn neutral). */
+  rail?: { line: string; name: string; colour: string | null; ofRegion: boolean; osmRelation: number; runs: number[][] }[];
+  /** the backdrop only: lines that run on far past the map, for direction labels and station lists */
+  exits?: BackdropExit[];
 }
+/** A line that runs on far past the map (the backdrop's `exits`): toward which terminus, along which path, past which stations. */
+export interface BackdropExit {
+  id: string;
+  /** the line it continues: one of the region's line ids, or a line of the backdrop's own ('ets') */
+  line: string;
+  terminus: string;
+  /** ISO country code of where it leads (MY, SG, TH) */
+  country: string;
+  services: string | null;
+  osmRelation: number;
+  /** from a stop inside the map to the terminus, flat x0, y0, … (m, in the region's frame; it may run past the backdrop) */
+  path: number[];
+  /** the first station past the map's edge */
+  edgeStation: string | null;
+  /** in order from the map's edge to the terminus; c in the region's frame (m) */
+  stations: { name: string; country: string; c: [number, number] }[];
+  /** stops past the end of the OpenStreetMap extract (from a cited source) */
+  beyond?: { name: string; country: string; note?: string }[];
+  note?: string;
+  sources: { publisher: string; url: string; fetched?: string }[];
+}
+/** A split street map comes in two files: 'inner' (the default, full detail, load it first) and 'outer' (the ring
+ *  around it, thinned). An unsplit map is all 'inner'. 'backdrop': a coarse map far around it (land and sea, big green
+ *  and built-up areas, motorways and trunk roads) to fill the view to the horizon; lay it with RegionModel.setBackdrop. */
+export type BasemapPart = 'inner' | 'outer' | 'backdrop';
 const BASEMAP_LOADERS: Record<string, () => Promise<RegionBasemap>> = {
   'kuala-lumpur': () => import('../regions/kuala-lumpur/data/basemap.json').then((m) => m.default as unknown as RegionBasemap),
+  'greater-kl': () => import('../regions/greater-kl/data/basemap.json').then((m) => m.default as unknown as RegionBasemap),
+  'greater-kl/outer': () => import('../regions/greater-kl/data/basemap-outer.json').then((m) => m.default as unknown as RegionBasemap),
+  'greater-kl/backdrop': () => import('../regions/greater-kl/data/basemap-backdrop.json').then((m) => m.default as unknown as RegionBasemap),
 };
 const basemapCache = new Map<string, Promise<RegionBasemap>>();
-/** A region's flat street map (its own chunk, fetched on first use and cached). Rejects for a region without one. */
-export function loadRegionBasemap(id = 'kuala-lumpur'): Promise<RegionBasemap> {
-  const load = BASEMAP_LOADERS[id]; if (!load) return Promise.reject(new Error(`region "${id}" has no base map (known: ${Object.keys(BASEMAP_LOADERS).join(', ')})`));
-  let p = basemapCache.get(id); if (!p) { p = load(); basemapCache.set(id, p); }
+/** A region's flat street map (its own chunk, fetched on first use and cached). Rejects for a region without one, or
+ *  without that part. greater-kl (Klang Valley, Genting to KLIA, in the kuala-lumpur frame) is split: load 'inner',
+ *  then 'outer', and last the 'backdrop' around it. */
+export function loadRegionBasemap(id = 'kuala-lumpur', part: BasemapPart = 'inner'): Promise<RegionBasemap> {
+  const key = part === 'inner' ? id : `${id}/${part}`;
+  const load = BASEMAP_LOADERS[key]; if (!load) return Promise.reject(new Error(`region "${id}" has no base map${part === 'inner' ? '' : ` part "${part}"`} (known: ${Object.keys(BASEMAP_LOADERS).join(', ')})`));
+  let p = basemapCache.get(key); if (!p) { p = load(); basemapCache.set(key, p); }
   return p;
 }
 
 const LOADERS: Record<string, () => Promise<RawRegion>> = {
   'kuala-lumpur': () => import('../regions/kuala-lumpur/data/region.json').then((m) => m.default as unknown as RawRegion),
+  'greater-kl': () => import('../regions/greater-kl/data/region.json').then((m) => m.default as unknown as RawRegion),
 };
 const cache = new Map<string, Promise<Region>>();
 /** The region's data (its own chunk, fetched on first use and cached). Rejects for an unknown id. */

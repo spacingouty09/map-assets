@@ -1,0 +1,9 @@
+{
+  "id": "greater-kl",
+  "name": "Greater Kuala Lumpur",
+  "summary": "The street map of the Klang Valley from Genting Highlands down to KLIA and Sepang: the full-screen background of the Kuala Lumpur overview.",
+  "bbox": { "south": 2.65, "west": 101.36, "north": 3.46, "east": 101.86 },
+  "frame": "kuala-lumpur",
+  "tiles": { "main": [3, 4], "streets": [5, 7], "areas": [2, 3] },
+  "notes": "Box D of the owner's region preview (2026-11-24): Klang and Port Klang (101.36 E) to Genting Highlands (3.42 N, 101.79 E), Rawang (3.32 N) to KLIA and the Sepang circuit (2.74–2.76 N). About 56 × 84 km. Base map only (no rail of its own): it is drawn in the kuala-lumpur frame (\"frame\"), so it lines up with that region's rail network and spots with no offset. Fetched in tiles (\"tiles\") since the box is about 11 times the Kuala Lumpur one."
+}

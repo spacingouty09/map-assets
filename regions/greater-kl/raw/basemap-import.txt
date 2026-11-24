@@ -1,0 +1,4 @@
+Imported with pipeline/import-pbf.mjs from malaysia-singapore-brunei-latest.osm.pbf (https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf), OSM data as of 2026-11-23T21:21:17Z.
+osmium extract -b 101.36,2.65,101.86,3.46 --strategy smart
+osmium tags-filter w/highway=motorway,motorway_link,trunk,trunk_link,primary,primary_link,secondary,secondary_link,tertiary,tertiary_link,residential,unclassified,living_street wr/natural=water,wetland,wood,scrub,grassland wr/landuse=reservoir,basin,forest,grass,meadow,recreation_ground,cemetery,village_green wr/waterway=riverbank wr/leisure=park,garden,golf_course,nature_reserve,recreation_ground n/place=town,suburb,quarter,neighbourhood
+osmium export -f geojsonseq --add-unique-id=type_id, then back to Overpass JSON elements (nodes, ways, multipolygon relations with member geometry)

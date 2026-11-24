@@ -46,7 +46,7 @@ const STREET: Record<BasemapRoadClass, { w: number; k: number; full: number; fad
   tertiary: { w: 1.15, k: 0.19, full: 8, fade: 10 }, minor: { w: 1, k: 0.16, full: 4, fade: 5 },
 };
 /** strength of the green and water areas (mix of ground towards the palette's green / water) */
-const AREA_K = { green: 0.42, water: 0.5 };
+const AREA_K = { green: 0.42, water: 0.5, urban: 0.07 };
 const LINE_W = { full: 3.6, faint: 1.6, journey: 7, casing: 11 };
 
 /** Round station dots of a constant size on screen (pixels, times the pixel ratio), with an outline. */
@@ -103,6 +103,7 @@ export class RegionModel {
   private baseRoads: THREE.Object3D[] = [];
   /** the plain plate under each spot tile: hidden while the flat street map is laid, which then shows under the buildings */
   private tilePlates: THREE.Object3D[] = [];
+  private backdrop: { group: THREE.Group; sea: THREE.MeshBasicMaterial; land: THREE.MeshBasicMaterial; urban: THREE.MeshBasicMaterial; green: THREE.MeshBasicMaterial; water: THREE.MeshBasicMaterial; roads: { mat: LineMaterial; k: number }[]; rail: { line: string; ofRegion: boolean; colour: string | null; mat: LineMaterial; objs: THREE.Object3D[] }[] } | null = null;
   private streets: { group: THREE.Group; roads: Partial<Record<BasemapRoadClass, { obj: THREE.Object3D; mat: LineMaterial | THREE.LineBasicMaterial }>>; green: THREE.MeshBasicMaterial; water: THREE.MeshBasicMaterial } | null = null;
   private mPerPx = 10;
 
@@ -251,6 +252,12 @@ export class RegionModel {
       const full = !focus || focus.has(d.line.id);
       d.mat.color = d.color; d.mat.linewidth = full ? LINE_W.full : LINE_W.faint; d.mat.opacity = full ? 1 : md.journey ? 0.28 : 0.35; d.obj.renderOrder = full ? 5 : 4;
     }
+    for (const r of this.backdrop?.rail ?? []) {
+      if (!r.ofRegion) { r.mat.opacity = focus ? 0.35 : 0.8; continue; }
+      const full = !focus || focus.has(r.line);
+      r.mat.color = new THREE.Color(this.lineColors[r.line]); r.mat.linewidth = full ? LINE_W.full : LINE_W.faint; r.mat.opacity = full ? 1 : md.journey ? 0.28 : 0.35;
+      for (const o of r.objs) o.renderOrder = full ? 5 : 4;
+    }
     // stations: dim the ones on faint lines
     const onFull = (s: { lines: string[] }) => !focus || s.lines.some((l) => focus.has(l));
     const size = this.dots.geometry.getAttribute('size') as THREE.BufferAttribute;
@@ -325,6 +332,58 @@ export class RegionModel {
     this.streets = { group, roads, green, water }; this.group.add(group);
     this.paintStreets();
   }
+  /** Lay a coarse backdrop (loadRegionBasemap(id, 'backdrop')) under everything: sea over its whole box, the land on it,
+   *  built-up, green and water areas, then motorways and trunk roads, all in the street map's colours so the two meet
+   *  without a seam. For a wide view that reaches past the street map to the horizon. Call again to replace it. */
+  setBackdrop(b: RegionBasemap) {
+    this.clearBackdrop();
+    const group = new THREE.Group(); group.name = 'backdrop';
+    const area = (polys: number[][][], order: number) => {
+      const pos: number[] = []; const idx: number[] = [];
+      for (const poly of polys) {
+        const rings = poly.map((r) => { const v: THREE.Vector2[] = []; for (let i = 0; i + 1 < r.length; i += 2) v.push(new THREE.Vector2(r[i], r[i + 1])); return v; });
+        const tris = THREE.ShapeUtils.triangulateShape(rings[0], rings.slice(1));
+        const base = pos.length / 3; for (const ring of rings) for (const p of ring) pos.push(p.x, Y.fill, -p.y);
+        for (const t of tris) idx.push(base + t[0], base + t[1], base + t[2]);
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+      const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, depthWrite: false });
+      const mesh = new THREE.Mesh(g, mat); mesh.renderOrder = order; mesh.frustumCulled = false; group.add(mesh); return mat;
+    };
+    const [x0, y0, x1, y1] = b.meta.box ?? [0, 0, 0, 0];
+    // between the region's own ground plate (-10) and anything a website lays under the map: below the street map (-9 up)
+    const sea = area([[[x0, y0, x1, y0, x1, y1, x0, y1]]], -10.8), land = area(b.land ?? [], -10.7), urban = area(b.urban ?? [], -10.6);
+    const green = area(b.green, -10.5), water = area(b.water, -10.4);
+    const roads: { mat: LineMaterial; k: number }[] = [];
+    for (const cls of ['trunk', 'motorway'] as const) {
+      const pos: number[] = [];
+      for (const line of b.roads[cls] ?? []) for (let i = 2; i + 1 < line.length; i += 2) pos.push(line[i - 2], Y.street, -line[i - 1], line[i], Y.street, -line[i + 1]);
+      if (!pos.length) continue;
+      const g = new LineSegmentsGeometry(); g.setPositions(pos);
+      const mat = new LineMaterial({ linewidth: STREET[cls].w, depthWrite: false }); mat.resolution.copy(this.resolution);
+      const obj = new LineSegments2(g, mat); obj.renderOrder = cls === 'motorway' ? -10.2 : -10.3; obj.frustumCulled = false; group.add(obj); roads.push({ mat, k: STREET[cls].k });
+    }
+    // rail past the region's box: its own lines run on in their colour and focus state; other lines thin and neutral, under them
+    const rail: NonNullable<RegionModel['backdrop']>['rail'] = [];
+    for (const l of b.rail ?? []) {
+      const ofRegion = l.ofRegion && !!this.lineColors[l.line];
+      const mat = new LineMaterial({ linewidth: ofRegion ? LINE_W.full : LINE_W.faint, transparent: true }); mat.resolution.copy(this.resolution);
+      const objs = l.runs.map((r) => {
+        const pos: number[] = []; for (let i = 0; i + 1 < r.length; i += 2) pos.push(r[i], Y.line, -r[i + 1]);
+        const g = new LineGeometry(); g.setPositions(pos); const o = new Line2(g, mat); o.renderOrder = ofRegion ? 4 : 3.5; o.frustumCulled = false; group.add(o); return o;
+      });
+      rail.push({ line: l.line, ofRegion, colour: l.colour, mat, objs });
+    }
+    this.backdrop = { group, sea, land, urban, green, water, roads, rail }; this.group.add(group);
+    this.paintStreets(); this.setMode({});
+  }
+  /** Remove the backdrop. */
+  clearBackdrop() {
+    if (!this.backdrop) return;
+    this.group.remove(this.backdrop.group);
+    this.backdrop.group.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); (m.material as THREE.Material | undefined)?.dispose(); });
+    this.backdrop = null;
+  }
   /** Remove the flat street map (the region's motorways and trunk roads, and the tiles' plates, come back). */
   clearBasemap() {
     if (!this.streets) return;
@@ -338,8 +397,16 @@ export class RegionModel {
     this.mPerPx = mPerPx; this.paintStreets();
   }
   private paintStreets() {
-    const st = this.streets; if (!st) return;
     const p = this.palette; const ground = new THREE.Color(p.ground);
+    const bd = this.backdrop;
+    if (bd) {
+      bd.land.color.copy(ground); bd.urban.color.copy(ground).lerp(new THREE.Color(p.edge), AREA_K.urban);
+      bd.green.color.copy(ground).lerp(new THREE.Color(p.green), AREA_K.green);
+      bd.sea.color.copy(ground).lerp(new THREE.Color(p.water), AREA_K.water); bd.water.color.copy(bd.sea.color);
+      for (const r of bd.roads) r.mat.color.copy(ground).lerp(new THREE.Color(p.edge), r.k);
+      for (const r of bd.rail) if (!r.ofRegion) r.mat.color.copy(ground).lerp(new THREE.Color(r.colour ?? p.edge), r.colour ? 1 : 0.5);
+    }
+    const st = this.streets; if (!st) return;
     st.green.color.copy(ground).lerp(new THREE.Color(p.green), AREA_K.green);
     st.water.color.copy(ground).lerp(new THREE.Color(p.water), AREA_K.water);
     for (const cls of BASEMAP_ROAD_CLASSES) {
@@ -353,7 +420,7 @@ export class RegionModel {
   /** The drawing size in CSS pixels and the device pixel ratio (fat lines and dots are sized in pixels). */
   setResolution(w: number, h: number, pixelRatio = 1) {
     this.resolution.set(w, h);
-    const streetMats = Object.values(this.streets?.roads ?? {}).map((r) => r.mat).filter((m): m is LineMaterial => m instanceof LineMaterial);
+    const streetMats = [...Object.values(this.streets?.roads ?? {}).map((r) => r.mat), ...(this.backdrop?.roads ?? []).map((r) => r.mat), ...(this.backdrop?.rail ?? []).map((r) => r.mat)].filter((m): m is LineMaterial => m instanceof LineMaterial);
     for (const m of [...this.draws.map((d) => d.mat), this.mats.river, this.mats.casing, ...this.journeyLines.map((j) => j.mat), ...streetMats]) m.resolution.set(w, h);
     this.mats.dots.uniforms.ratio.value = pixelRatio; this.mats.marker.uniforms.ratio.value = pixelRatio;
   }
